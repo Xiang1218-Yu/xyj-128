@@ -1,4 +1,4 @@
-import { Keyboard, Info, Mouse, MousePointer2 } from 'lucide-react';
+import { Keyboard, Info, Mouse, MousePointer2, Download } from 'lucide-react';
 import { useState } from 'react';
 import { LayoutSelector } from './LayoutSelector';
 import { MaterialSelector } from './MaterialSelector';
@@ -13,9 +13,11 @@ import { LAYOUT_CONFIGS } from '@/data/layouts';
 interface ControlPanelProps {
   selectedZone: KeyZone | null;
   onZoneChange: (zone: KeyZone | null) => void;
+  onExport?: () => void;
+  isExporting?: boolean;
 }
 
-export function ControlPanel({ selectedZone, onZoneChange }: ControlPanelProps) {
+export function ControlPanel({ selectedZone, onZoneChange, onExport, isExporting }: ControlPanelProps) {
   const [showTips, setShowTips] = useState(true);
   const layout = useLayout();
   const layoutConfig = LAYOUT_CONFIGS[layout];
@@ -55,7 +57,18 @@ export function ControlPanel({ selectedZone, onZoneChange }: ControlPanelProps) 
         <KeyCapEditor />
       </div>
 
-      <div className="p-4 border-t border-gray-800/50">
+      <div className="p-4 border-t border-gray-800/50 space-y-3">
+        {onExport && (
+          <button
+            onClick={onExport}
+            disabled={isExporting}
+            className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-indigo-600 hover:bg-indigo-500 disabled:bg-indigo-800/50 disabled:cursor-not-allowed rounded-xl text-white text-sm font-medium transition-all hover:scale-[1.02] active:scale-[0.98] shadow-lg shadow-indigo-500/20"
+          >
+            <Download className="w-4 h-4" />
+            {isExporting ? '导出中...' : '导出高清图片'}
+          </button>
+        )}
+        
         <button
           onClick={() => setShowTips(!showTips)}
           className="w-full flex items-center justify-between px-3 py-2 text-xs text-gray-400 hover:text-gray-300 hover:bg-gray-800/30 rounded-lg transition-all"

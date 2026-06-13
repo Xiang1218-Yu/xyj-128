@@ -1,13 +1,32 @@
-import { useState } from 'react';
-import { KeyboardScene } from '@/components/Keyboard3D/KeyboardScene';
+import { useState, useRef } from 'react';
+import { KeyboardScene, KeyboardSceneRefs } from '@/components/Keyboard3D/KeyboardScene';
 import { ControlPanel } from '@/components/ControlPanel/ControlPanel';
 import { useKeyboardPress } from '@/hooks/useKeyboardPress';
 import { KeyZone } from '@/types/keyboard';
+import { exportSceneAsImage } from '@/utils/exportImage';
+import * as THREE from 'three';
 
 export default function Home() {
   const [selectedZone, setSelectedZone] = useState<KeyZone | null>(null);
+  const [isExporting, setIsExporting] = useState(false);
   
+  const glRef = useRef<THREE.WebGLRenderer | null>(null);
+  const sceneRef = useRef<THREE.Scene | null>(null);
+  const cameraRef = useRef<THREE.Camera | null>(null);
+
+  const sceneRefs: KeyboardSceneRefs = { glRef, sceneRef, cameraRef };
+
   useKeyboardPress();
+
+  const handleExport = async () => {
+    if (isExporting) return;
+    setIsExporting(true);
+    try {
+      await exportSceneAsImage(glRef, sceneRef, cameraRef);
+    } finally {
+      setTimeout(() => setIsExporting(false), 1000);
+    }
+  };
 
   return (
     <div className="h-screen w-screen flex overflow-hidden bg-[#0a0a0f]">
@@ -26,7 +45,7 @@ export default function Home() {
               }}
             />
           </div>
-          <KeyboardScene selectedZone={selectedZone} />
+          <KeyboardScene selectedZone={selectedZone} sceneRefs={sceneRefs} />
         </div>
         
         <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-20">
@@ -49,12 +68,25 @@ export default function Home() {
             </div>
           </div>
         </div>
+
+        <button
+          onClick={handleExport}
+          disabled={isExporting}
+          className="absolute top-6 right-6 z-20 flex items-center gap-2 px-4 py-2.5 bg-indigo-600/80 hover:bg-indigo-500 disabled:bg-indigo-800/50 disabled:cursor-not-allowed backdrop-blur-md rounded-xl border border-indigo-400/30 text-white text-sm font-medium transition-all hover:scale-105 active:scale-95 shadow-lg shadow-indigo-500/20"
+        >
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+          </svg>
+          {isExporting ? '导出中...' : '导出高清图片'}
+        </button>
       </div>
       
       <div className="w-96 flex-shrink-0">
         <ControlPanel
           selectedZone={selectedZone}
           onZoneChange={setSelectedZone}
+          onExport={handleExport}
+          isExporting={isExporting}
         />
       </div>
     </div>
