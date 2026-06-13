@@ -23,10 +23,10 @@ export function KeyboardCase() {
   });
 
   return (
-    <group position={[0, -0.25, 0]}>
+    <group position={[0, 0, 0]}>
       <RoundedBox
         ref={meshRef}
-        args={[caseWidth, 0.8, caseDepth]}
+        args={[caseWidth, 0.6, caseDepth]}
         radius={0.15}
         smoothness={8}
         castShadow
@@ -40,8 +40,8 @@ export function KeyboardCase() {
         />
       </RoundedBox>
 
-      <mesh position={[0, 0.16, 0]} receiveShadow>
-        <planeGeometry args={[caseWidth - 0.4, caseDepth - 0.4]} />
+      <mesh position={[0, 0.18, 0]} rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
+        <planeGeometry args={[caseWidth - 0.5, caseDepth - 0.5]} />
         <meshStandardMaterial
           color="#1e293b"
           roughness={0.9}
@@ -49,10 +49,10 @@ export function KeyboardCase() {
         />
       </mesh>
 
-      <mesh position={[0, -0.66, 0]} rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
-        <planeGeometry args={[caseWidth + 4, caseDepth + 4]} />
+      <mesh position={[0, -0.5, 0]} rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
+        <planeGeometry args={[caseWidth + 8, caseDepth + 8]} />
         <meshStandardMaterial
-          color="#0f172a"
+          color="#0a0a0f"
           roughness={1}
           metalness={0}
         />

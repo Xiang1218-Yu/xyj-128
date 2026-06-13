@@ -38,7 +38,7 @@ function KeyboardContent({ selectedZone }: KeyboardContentProps) {
   return (
     <group ref={groupRef}>
       <KeyboardCase />
-      <group position={[0, 0.5, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+      <group position={[-layoutConfig.width / 2, 0.35, -layoutConfig.height / 2]}>
         {keys}
       </group>
     </group>
@@ -53,7 +53,7 @@ export function KeyboardScene({ selectedZone }: KeyboardSceneProps) {
   return (
     <Canvas
       shadows
-      camera={{ position: [0, 8, 12], fov: 45 }}
+      camera={{ position: [0, 18, 22], fov: 45 }}
       gl={{ antialias: true, alpha: false }}
       dpr={[1, 2]}
     >
@@ -63,16 +63,15 @@ export function KeyboardScene({ selectedZone }: KeyboardSceneProps) {
       <Lights />
       <KeyboardContent selectedZone={selectedZone} />
       
-      <Environment preset="city" />
-      
       <OrbitControls
         enableDamping
         dampingFactor={0.05}
-        minDistance={6}
-        maxDistance={25}
+        minDistance={12}
+        maxDistance={50}
         maxPolarAngle={Math.PI / 2.1}
-        minPolarAngle={Math.PI / 6}
+        minPolarAngle={Math.PI / 8}
         enablePan={true}
+        target={[0, 0, 0]}
       />
       
       <EffectComposer>
