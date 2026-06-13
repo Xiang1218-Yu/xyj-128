@@ -35,7 +35,7 @@ export function KeyCapEditor() {
   const fontSize = useFontSize();
   const fontColor = useFontColor();
   const selectedKeyId = useSelectedKeyId();
-  const keyCustom = selectedKeyId ? useKeyCustom(selectedKeyId) : undefined;
+  const keyCustom = useKeyCustom(selectedKeyId ?? '');
   const setFontStyle = useKeyboardStore((state) => state.setFontStyle);
   const setFontSize = useKeyboardStore((state) => state.setFontSize);
   const setFontColor = useKeyboardStore((state) => state.setFontColor);
