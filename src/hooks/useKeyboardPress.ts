@@ -1,10 +1,13 @@
 import { useEffect, useCallback } from 'react';
 import { useKeyboardStore } from '@/store/useKeyboardStore';
 import { LAYOUT_CONFIGS } from '@/data/layouts';
-import { useLayout } from '@/store/useKeyboardStore';
+import { useLayout, useSwitchType, useSoundEnabled } from '@/store/useKeyboardStore';
+import { playPressSound, playReleaseSound } from '@/utils/switchSound';
 
 export const useKeyboardPress = () => {
   const layout = useLayout();
+  const switchType = useSwitchType();
+  const soundEnabled = useSoundEnabled();
   const pressKey = useKeyboardStore((state) => state.pressKey);
   const releaseKey = useKeyboardStore((state) => state.releaseKey);
 
@@ -23,6 +26,9 @@ export const useKeyboardPress = () => {
       if (keyId) {
         e.preventDefault();
         pressKey(keyId);
+        if (soundEnabled) {
+          playPressSound(switchType);
+        }
       }
     };
 
@@ -31,6 +37,9 @@ export const useKeyboardPress = () => {
       if (keyId) {
         e.preventDefault();
         releaseKey(keyId);
+        if (soundEnabled) {
+          playReleaseSound(switchType);
+        }
       }
     };
 
@@ -41,5 +50,5 @@ export const useKeyboardPress = () => {
       window.removeEventListener('keydown', handleKeyDown);
       window.removeEventListener('keyup', handleKeyUp);
     };
-  }, [getKeyIdByCode, pressKey, releaseKey]);
+  }, [getKeyIdByCode, pressKey, releaseKey, switchType, soundEnabled]);
 };

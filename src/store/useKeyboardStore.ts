@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { KeyboardState, KeyboardActions, LayoutType, CaseMaterial, KeyZone } from '@/types/keyboard';
+import { KeyboardState, KeyboardActions, LayoutType, CaseMaterial, KeyZone, SwitchType } from '@/types/keyboard';
 import { DEFAULT_ZONE_COLORS } from '@/data/zones';
 
 interface KeyboardStore extends KeyboardState, KeyboardActions {}
@@ -7,6 +7,8 @@ interface KeyboardStore extends KeyboardState, KeyboardActions {}
 export const useKeyboardStore = create<KeyboardStore>((set) => ({
   layout: '65%',
   caseMaterial: 'aluminum',
+  switchType: 'red',
+  soundEnabled: true,
   zoneColors: { ...DEFAULT_ZONE_COLORS },
   pressedKeys: new Set<string>(),
 
@@ -16,6 +18,14 @@ export const useKeyboardStore = create<KeyboardStore>((set) => ({
 
   setCaseMaterial: (caseMaterial: CaseMaterial) => {
     set({ caseMaterial });
+  },
+
+  setSwitchType: (switchType: SwitchType) => {
+    set({ switchType });
+  },
+
+  setSoundEnabled: (soundEnabled: boolean) => {
+    set({ soundEnabled });
   },
 
   setZoneColor: (zone: KeyZone, color: string) => {
@@ -50,6 +60,8 @@ export const useKeyboardStore = create<KeyboardStore>((set) => ({
 
 export const useLayout = () => useKeyboardStore((state) => state.layout);
 export const useCaseMaterial = () => useKeyboardStore((state) => state.caseMaterial);
+export const useSwitchType = () => useKeyboardStore((state) => state.switchType);
+export const useSoundEnabled = () => useKeyboardStore((state) => state.soundEnabled);
 export const useZoneColors = () => useKeyboardStore((state) => state.zoneColors);
 export const usePressedKeys = () => useKeyboardStore((state) => state.pressedKeys);
 export const useIsKeyPressed = (keyId: string) =>

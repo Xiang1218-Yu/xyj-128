@@ -10,6 +10,8 @@ export type KeyZone =
 
 export type CaseMaterial = 'aluminum' | 'plastic' | 'wood' | 'carbon';
 
+export type SwitchType = 'red' | 'blue' | 'brown' | 'black' | 'silver' | 'green';
+
 export interface KeyConfig {
   id: string;
   label: string;
@@ -47,9 +49,19 @@ export interface ZoneConfig {
   defaultColor: string;
 }
 
+export interface SwitchConfig {
+  id: SwitchType;
+  name: string;
+  description: string;
+  category: 'linear' | 'tactile' | 'clicky';
+  color: string;
+}
+
 export interface KeyboardState {
   layout: LayoutType;
   caseMaterial: CaseMaterial;
+  switchType: SwitchType;
+  soundEnabled: boolean;
   zoneColors: Record<KeyZone, string>;
   pressedKeys: Set<string>;
 }
@@ -57,6 +69,8 @@ export interface KeyboardState {
 export interface KeyboardActions {
   setLayout: (layout: LayoutType) => void;
   setCaseMaterial: (material: CaseMaterial) => void;
+  setSwitchType: (switchType: SwitchType) => void;
+  setSoundEnabled: (enabled: boolean) => void;
   setZoneColor: (zone: KeyZone, color: string) => void;
   pressKey: (keyId: string) => void;
   releaseKey: (keyId: string) => void;

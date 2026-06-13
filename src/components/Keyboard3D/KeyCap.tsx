@@ -3,8 +3,9 @@ import { useFrame } from '@react-three/fiber';
 import { RoundedBox, Text } from '@react-three/drei';
 import * as THREE from 'three';
 import { KeyConfig } from '@/types/keyboard';
-import { useKeyboardStore, useIsKeyPressed } from '@/store/useKeyboardStore';
+import { useKeyboardStore, useIsKeyPressed, useSwitchType, useSoundEnabled } from '@/store/useKeyboardStore';
 import { useZoneColors } from '@/store/useKeyboardStore';
+import { playPressSound, playReleaseSound } from '@/utils/switchSound';
 
 interface KeyCapProps {
   keyConfig: KeyConfig;
@@ -17,6 +18,8 @@ export function KeyCap({ keyConfig, selectedZone }: KeyCapProps) {
   const [hovered, setHovered] = useState(false);
   const isPressed = useIsKeyPressed(keyConfig.id);
   const zoneColors = useZoneColors();
+  const switchType = useSwitchType();
+  const soundEnabled = useSoundEnabled();
   const pressKey = useKeyboardStore((state) => state.pressKey);
   const releaseKey = useKeyboardStore((state) => state.releaseKey);
 
@@ -54,11 +57,17 @@ export function KeyCap({ keyConfig, selectedZone }: KeyCapProps) {
   const handlePointerDown = (e: any) => {
     e.stopPropagation();
     pressKey(keyConfig.id);
+    if (soundEnabled) {
+      playPressSound(switchType);
+    }
   };
 
   const handlePointerUp = (e: any) => {
     e.stopPropagation();
     releaseKey(keyConfig.id);
+    if (soundEnabled) {
+      playReleaseSound(switchType);
+    }
   };
 
   const handlePointerOut = () => {
