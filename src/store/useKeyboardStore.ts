@@ -5,6 +5,9 @@ import { DEFAULT_FONT_SIZE, DEFAULT_FONT_COLOR } from '@/data/fonts';
 
 interface KeyboardStore extends KeyboardState, KeyboardActions {}
 
+let stickerIdCounter = 0;
+const genStickerId = () => `sticker_${Date.now()}_${++stickerIdCounter}`;
+
 export const useKeyboardStore = create<KeyboardStore>((set) => ({
   layout: '65%',
   caseMaterial: 'aluminum',
@@ -16,6 +19,7 @@ export const useKeyboardStore = create<KeyboardStore>((set) => ({
   fontSize: DEFAULT_FONT_SIZE,
   fontColor: DEFAULT_FONT_COLOR,
   selectedKeyId: null,
+  selectedStickerId: null,
   keyCustoms: {},
 
   setLayout: (layout: LayoutType) => {
@@ -76,7 +80,11 @@ export const useKeyboardStore = create<KeyboardStore>((set) => ({
   },
 
   setSelectedKeyId: (selectedKeyId: string | null) => {
-    set({ selectedKeyId });
+    set({ selectedKeyId, selectedStickerId: null });
+  },
+
+  setSelectedStickerId: (selectedStickerId: string | null) => {
+    set({ selectedStickerId });
   },
 
   setKeyLabel: (keyId: string, label: string) => {
@@ -91,28 +99,78 @@ export const useKeyboardStore = create<KeyboardStore>((set) => ({
     }));
   },
 
-  setKeySticker: (keyId: string, sticker: StickerType) => {
-    set((state) => ({
-      keyCustoms: {
-        ...state.keyCustoms,
-        [keyId]: {
-          ...state.keyCustoms[keyId],
-          sticker,
+  addKeySticker: (keyId: string, stickerType: StickerType) => {
+    set((state) => {
+      const existing = state.keyCustoms[keyId];
+      const existingStickers = existing?.stickers ?? [];
+      const offset = existingStickers.length * 0.08;
+      return {
+        keyCustoms: {
+          ...state.keyCustoms,
+          [keyId]: {
+            ...existing,
+            stickers: [
+              ...existingStickers,
+              {
+                id: genStickerId(),
+                type: stickerType,
+                x: -0.3 + offset,
+                y: -0.3,
+              },
+            ],
+          },
         },
-      },
-    }));
+      };
+    });
+  },
+
+  removeKeySticker: (keyId: string, stickerId: string) => {
+    set((state) => {
+      const existing = state.keyCustoms[keyId];
+      if (!existing?.stickers) return {};
+      return {
+        selectedStickerId: state.selectedStickerId === stickerId ? null : state.selectedStickerId,
+        keyCustoms: {
+          ...state.keyCustoms,
+          [keyId]: {
+            ...existing,
+            stickers: existing.stickers.filter((s) => s.id !== stickerId),
+          },
+        },
+      };
+    });
+  },
+
+  setKeyStickerPosition: (keyId: string, stickerId: string, x: number, y: number) => {
+    set((state) => {
+      const existing = state.keyCustoms[keyId];
+      if (!existing?.stickers) return {};
+      const clampedX = Math.max(-0.45, Math.min(0.45, x));
+      const clampedY = Math.max(-0.45, Math.min(0.45, y));
+      return {
+        keyCustoms: {
+          ...state.keyCustoms,
+          [keyId]: {
+            ...existing,
+            stickers: existing.stickers.map((s) =>
+              s.id === stickerId ? { ...s, x: clampedX, y: clampedY } : s
+            ),
+          },
+        },
+      };
+    });
   },
 
   resetKeyCustom: (keyId: string) => {
     set((state) => {
       const newKeyCustoms = { ...state.keyCustoms };
       delete newKeyCustoms[keyId];
-      return { keyCustoms: newKeyCustoms };
+      return { keyCustoms: newKeyCustoms, selectedStickerId: null };
     });
   },
 
   resetAllKeyCustoms: () => {
-    set({ keyCustoms: {} });
+    set({ keyCustoms: {}, selectedStickerId: null });
   },
 }));
 
@@ -128,6 +186,7 @@ export const useFontStyle = () => useKeyboardStore((state) => state.fontStyle);
 export const useFontSize = () => useKeyboardStore((state) => state.fontSize);
 export const useFontColor = () => useKeyboardStore((state) => state.fontColor);
 export const useSelectedKeyId = () => useKeyboardStore((state) => state.selectedKeyId);
+export const useSelectedStickerId = () => useKeyboardStore((state) => state.selectedStickerId);
 export const useKeyCustom = (keyId: string) =>
   useKeyboardStore((state) => state.keyCustoms[keyId]);
 export const useKeyCustoms = () => useKeyboardStore((state) => state.keyCustoms);

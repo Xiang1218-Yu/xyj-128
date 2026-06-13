@@ -1,4 +1,4 @@
-import { Type, Minus, Plus, RotateCcw, Sticker, Palette, Edit3 } from 'lucide-react';
+import { Type, Minus, Plus, RotateCcw, Sticker, Palette, Edit3, Trash2, Move } from 'lucide-react';
 import { useState } from 'react';
 import {
   useKeyboardStore,
@@ -7,6 +7,7 @@ import {
   useFontColor,
   useSelectedKeyId,
   useKeyCustom,
+  useSelectedStickerId,
 } from '@/store/useKeyboardStore';
 import { FONT_LIST, FONT_CONFIGS, MIN_FONT_SIZE, MAX_FONT_SIZE, DEFAULT_FONT_SIZE, DEFAULT_FONT_COLOR } from '@/data/fonts';
 import { STICKER_LIST, STICKER_CONFIGS } from '@/data/stickers';
@@ -35,12 +36,16 @@ export function KeyCapEditor() {
   const fontSize = useFontSize();
   const fontColor = useFontColor();
   const selectedKeyId = useSelectedKeyId();
+  const selectedStickerId = useSelectedStickerId();
   const keyCustom = useKeyCustom(selectedKeyId ?? '');
   const setFontStyle = useKeyboardStore((state) => state.setFontStyle);
   const setFontSize = useKeyboardStore((state) => state.setFontSize);
   const setFontColor = useKeyboardStore((state) => state.setFontColor);
   const setKeyLabel = useKeyboardStore((state) => state.setKeyLabel);
-  const setKeySticker = useKeyboardStore((state) => state.setKeySticker);
+  const addKeySticker = useKeyboardStore((state) => state.addKeySticker);
+  const removeKeySticker = useKeyboardStore((state) => state.removeKeySticker);
+  const setKeyStickerPosition = useKeyboardStore((state) => state.setKeyStickerPosition);
+  const setSelectedStickerId = useKeyboardStore((state) => state.setSelectedStickerId);
   const resetKeyCustom = useKeyboardStore((state) => state.resetKeyCustom);
   const resetAllKeyCustoms = useKeyboardStore((state) => state.resetAllKeyCustoms);
   const layout = useLayout();
@@ -51,7 +56,8 @@ export function KeyCapEditor() {
     : null;
 
   const currentLabel = keyCustom?.label ?? selectedKeyConfig?.label ?? '';
-  const currentSticker = keyCustom?.sticker ?? 'none';
+  const stickers = keyCustom?.stickers ?? [];
+  const selectedSticker = stickers.find((s) => s.id === selectedStickerId);
 
   const handleFontSizeChange = (delta: number) => {
     const newSize = Math.max(MIN_FONT_SIZE, Math.min(MAX_FONT_SIZE, fontSize + delta));
@@ -70,15 +76,35 @@ export function KeyCapEditor() {
     }
   };
 
-  const handleStickerChange = (sticker: StickerType) => {
+  const handleAddSticker = (stickerType: StickerType) => {
     if (selectedKeyId) {
-      setKeySticker(selectedKeyId, sticker);
+      addKeySticker(selectedKeyId, stickerType);
+    }
+  };
+
+  const handleRemoveSticker = (stickerId: string) => {
+    if (selectedKeyId) {
+      removeKeySticker(selectedKeyId, stickerId);
+    }
+  };
+
+  const handleStickerPosChange = (axis: 'x' | 'y', delta: number) => {
+    if (selectedKeyId && selectedSticker) {
+      const current = axis === 'x' ? selectedSticker.x : selectedSticker.y;
+      const newVal = Math.max(-0.45, Math.min(0.45, current + delta));
+      setKeyStickerPosition(
+        selectedKeyId,
+        selectedSticker.id,
+        axis === 'x' ? newVal : selectedSticker.x,
+        axis === 'y' ? newVal : selectedSticker.y
+      );
     }
   };
 
   const handleResetKey = () => {
     if (selectedKeyId) {
       resetKeyCustom(selectedKeyId);
+      setSelectedStickerId(null);
     }
   };
 
@@ -252,42 +278,125 @@ export function KeyCapEditor() {
               <Sticker className="w-3.5 h-3.5 text-pink-400" />
               <label className="text-xs text-gray-400">添加贴纸</label>
             </div>
-            <div className="grid grid-cols-6 gap-1.5">
+            <div className="grid grid-cols-6 gap-1.5 mb-3">
               {STICKER_LIST.map((sticker) => {
                 const config = STICKER_CONFIGS[sticker as StickerType];
-                const isSelected = currentSticker === sticker;
-
-                if (sticker === 'none') {
-                  return (
-                    <button
-                      key={sticker}
-                      onClick={() => handleStickerChange(sticker as StickerType)}
-                      className={`aspect-square rounded-lg text-xs transition-all duration-200 flex items-center justify-center ${
-                        isSelected
-                          ? 'bg-pink-600/20 border border-pink-500/50 text-pink-300'
-                          : 'bg-gray-800/60 border border-gray-700/50 hover:bg-gray-700/60 text-gray-500'
-                      }`}
-                    >
-                      <span className="text-[10px]">无</span>
-                    </button>
-                  );
-                }
-
                 return (
                   <button
                     key={sticker}
-                    onClick={() => handleStickerChange(sticker as StickerType)}
-                    className={`aspect-square rounded-lg text-lg transition-all duration-200 flex items-center justify-center ${
-                      isSelected
-                        ? 'bg-pink-600/20 border border-pink-500/50 scale-110'
-                        : 'bg-gray-800/60 border border-gray-700/50 hover:bg-gray-700/60 hover:scale-105'
-                    }`}
+                    onClick={() => handleAddSticker(sticker as StickerType)}
+                    className="aspect-square rounded-lg text-lg transition-all duration-200 flex items-center justify-center bg-gray-800/60 border border-gray-700/50 hover:bg-pink-600/20 hover:border-pink-500/40 hover:scale-105"
+                    title={`添加${config.name}`}
                   >
                     {config.emoji}
                   </button>
                 );
               })}
             </div>
+            <p className="text-[10px] text-gray-600 mb-3">点击贴纸添加到键帽（可添加多个）</p>
+
+            {stickers.length > 0 && (
+              <div className="space-y-2">
+                <div className="text-[10px] text-gray-500 flex items-center justify-between">
+                  <span>已添加贴纸 ({stickers.length})</span>
+                  <span className="flex items-center gap-1">
+                    <Move className="w-3 h-3" /> 3D 中可拖拽
+                  </span>
+                </div>
+                <div className="space-y-1.5 max-h-48 overflow-y-auto">
+                  {stickers.map((sticker) => {
+                    const config = STICKER_CONFIGS[sticker.type];
+                    const isSelected = selectedStickerId === sticker.id;
+
+                    return (
+                      <div
+                        key={sticker.id}
+                        onClick={() => setSelectedStickerId(sticker.id)}
+                        className={`flex items-center gap-2 p-2 rounded-lg border cursor-pointer transition-all ${
+                          isSelected
+                            ? 'bg-pink-600/20 border-pink-500/50'
+                            : 'bg-gray-800/40 border-gray-700/40 hover:bg-gray-700/40'
+                        }`}
+                      >
+                        <span className="text-xl">{config.emoji}</span>
+                        <div className="flex-1 min-w-0">
+                          <div className="text-xs text-gray-300 truncate">{config.name}</div>
+                          <div className="text-[10px] text-gray-500">
+                            X: {(sticker.x * 100).toFixed(0)}% · Y: {(sticker.y * 100).toFixed(0)}%
+                          </div>
+                        </div>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleRemoveSticker(sticker.id);
+                          }}
+                          className="p-1 text-gray-500 hover:text-red-400 hover:bg-red-900/20 rounded transition-all"
+                          title="删除贴纸"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
+            {selectedSticker && (
+              <div className="mt-3 p-3 bg-gray-800/40 rounded-xl border border-pink-500/30">
+                <div className="text-xs text-gray-400 mb-2 flex items-center gap-2">
+                  <span className="text-lg">{STICKER_CONFIGS[selectedSticker.type].emoji}</span>
+                  位置微调
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="text-[10px] text-gray-500">X 轴</span>
+                      <span className="text-[10px] text-gray-400">
+                        {(selectedSticker.x * 100).toFixed(0)}%
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <button
+                        onClick={() => handleStickerPosChange('x', -0.05)}
+                        className="flex-1 p-1.5 bg-gray-800/60 hover:bg-gray-700/60 rounded text-gray-400 hover:text-gray-200 text-xs transition-all"
+                      >
+                        ←
+                      </button>
+                      <button
+                        onClick={() => handleStickerPosChange('x', 0.05)}
+                        className="flex-1 p-1.5 bg-gray-800/60 hover:bg-gray-700/60 rounded text-gray-400 hover:text-gray-200 text-xs transition-all"
+                      >
+                        →
+                      </button>
+                    </div>
+                  </div>
+                  <div>
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="text-[10px] text-gray-500">Y 轴</span>
+                      <span className="text-[10px] text-gray-400">
+                        {(selectedSticker.y * 100).toFixed(0)}%
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <button
+                        onClick={() => handleStickerPosChange('y', -0.05)}
+                        className="flex-1 p-1.5 bg-gray-800/60 hover:bg-gray-700/60 rounded text-gray-400 hover:text-gray-200 text-xs transition-all"
+                      >
+                        ↑
+                      </button>
+                      <button
+                        onClick={() => handleStickerPosChange('y', 0.05)}
+                        className="flex-1 p-1.5 bg-gray-800/60 hover:bg-gray-700/60 rounded text-gray-400 hover:text-gray-200 text-xs transition-all"
+                      >
+                        ↓
+                      </button>
+                    </div>
+                  </div>
+                </div>
+                <p className="text-[10px] text-gray-600 mt-2">提示：在 3D 视图中直接拖动贴纸更直观</p>
+              </div>
+            )}
           </div>
 
           <button
@@ -302,6 +411,7 @@ export function KeyCapEditor() {
         <div className="p-4 bg-gray-800/30 rounded-xl border border-dashed border-gray-700/50 text-center">
           <div className="text-2xl mb-2">👆</div>
           <p className="text-xs text-gray-500">点击键盘上的任意键帽进行编辑</p>
+          <p className="text-[10px] text-gray-600 mt-1">轻触选择 · 长按按压体验</p>
         </div>
       )}
     </div>

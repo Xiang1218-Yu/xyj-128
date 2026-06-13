@@ -1,12 +1,6 @@
 import { StickerConfig, StickerType } from '@/types/keyboard';
 
 export const STICKER_CONFIGS: Record<StickerType, StickerConfig> = {
-  none: {
-    id: 'none',
-    name: '无贴纸',
-    emoji: '',
-    color: 'transparent',
-  },
   cat: {
     id: 'cat',
     name: '小猫',
@@ -76,7 +70,6 @@ export const STICKER_CONFIGS: Record<StickerType, StickerConfig> = {
 };
 
 export const STICKER_LIST: StickerType[] = [
-  'none',
   'cat',
   'star',
   'heart',

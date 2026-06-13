@@ -1,8 +1,8 @@
-import { useRef, useState, useMemo } from 'react';
-import { useFrame } from '@react-three/fiber';
+import { useRef, useState, useMemo, useEffect } from 'react';
+import { useFrame, useThree } from '@react-three/fiber';
 import { RoundedBox, Text } from '@react-three/drei';
 import * as THREE from 'three';
-import { KeyConfig } from '@/types/keyboard';
+import { KeyConfig, StickerInstance } from '@/types/keyboard';
 import {
   useKeyboardStore,
   useIsKeyPressed,
@@ -13,11 +13,14 @@ import {
   useFontColor,
   useSelectedKeyId,
   useKeyCustom,
+  useSelectedStickerId,
 } from '@/store/useKeyboardStore';
 import { useZoneColors } from '@/store/useKeyboardStore';
 import { playPressSound, playReleaseSound } from '@/utils/switchSound';
 import { FONT_CONFIGS } from '@/data/fonts';
 import { STICKER_CONFIGS } from '@/data/stickers';
+
+const LONG_PRESS_THRESHOLD = 200;
 
 interface KeyCapProps {
   keyConfig: KeyConfig;
@@ -37,18 +40,33 @@ export function KeyCap({ keyConfig, selectedZone, onKeySelect }: KeyCapProps) {
   const globalFontSize = useFontSize();
   const fontColor = useFontColor();
   const selectedKeyId = useSelectedKeyId();
+  const selectedStickerId = useSelectedStickerId();
   const keyCustom = useKeyCustom(keyConfig.id);
   const pressKey = useKeyboardStore((state) => state.pressKey);
   const releaseKey = useKeyboardStore((state) => state.releaseKey);
   const setSelectedKeyId = useKeyboardStore((state) => state.setSelectedKeyId);
+  const setSelectedStickerId = useKeyboardStore((state) => state.setSelectedStickerId);
+  const setKeyStickerPosition = useKeyboardStore((state) => state.setKeyStickerPosition);
+
+  const pointerDownTimeRef = useRef<number>(0);
+  const longPressTimerRef = useRef<number | null>(null);
+  const longPressTriggeredRef = useRef<boolean>(false);
+  const activeStickerDragRef = useRef<{
+    id: string;
+    plane: THREE.Plane;
+    offset: THREE.Vector2;
+    size: THREE.Vector2;
+  } | null>(null);
+  const stickerGroupRefs = useRef<Record<string, THREE.Group | null>>({});
+
+  const { camera, gl, raycaster, pointer } = useThree();
 
   const color = zoneColors[keyConfig.zone];
   const isZoneSelected = selectedZone === keyConfig.zone;
   const isKeySelected = selectedKeyId === keyConfig.id;
 
   const displayLabel = keyCustom?.label ?? keyConfig.label;
-  const sticker = keyCustom?.sticker;
-  const stickerConfig = sticker ? STICKER_CONFIGS[sticker] : null;
+  const stickers: StickerInstance[] = keyCustom?.stickers ?? [];
 
   const pressDepth = useMemo(() => (isPressed ? -0.18 : 0), [isPressed]);
   const targetScale = useMemo(() => (isPressed ? 0.985 : 1), [isPressed]);
@@ -78,33 +96,147 @@ export function KeyCap({ keyConfig, selectedZone, onKeySelect }: KeyCapProps) {
     }
   });
 
-  const handlePointerDown = (e: any) => {
-    e.stopPropagation();
+  useEffect(() => {
+    return () => {
+      if (longPressTimerRef.current !== null) {
+        window.clearTimeout(longPressTimerRef.current);
+      }
+    };
+  }, []);
+
+  const triggerPress = () => {
     pressKey(keyConfig.id);
     if (soundEnabled) {
       playPressSound(switchType);
     }
   };
 
-  const handlePointerUp = (e: any) => {
-    e.stopPropagation();
+  const triggerRelease = () => {
     releaseKey(keyConfig.id);
     if (soundEnabled) {
       playReleaseSound(switchType);
     }
   };
 
-  const handlePointerOut = () => {
-    setHovered(false);
-    if (isPressed) {
-      releaseKey(keyConfig.id);
+  const handlePointerDownKey = (e: any) => {
+    e.stopPropagation();
+    pointerDownTimeRef.current = performance.now();
+    longPressTriggeredRef.current = false;
+
+    longPressTimerRef.current = window.setTimeout(() => {
+      longPressTriggeredRef.current = true;
+      triggerPress();
+    }, LONG_PRESS_THRESHOLD);
+  };
+
+  const handlePointerUpKey = (e: any) => {
+    e.stopPropagation();
+
+    if (longPressTimerRef.current !== null) {
+      window.clearTimeout(longPressTimerRef.current);
+      longPressTimerRef.current = null;
+    }
+
+    if (longPressTriggeredRef.current) {
+      triggerRelease();
+      longPressTriggeredRef.current = false;
+    } else {
+      setSelectedKeyId(keyConfig.id);
+      onKeySelect?.(keyConfig.id);
     }
   };
 
-  const handleClick = (e: any) => {
+  const handlePointerOutKey = () => {
+    setHovered(false);
+    if (longPressTimerRef.current !== null) {
+      window.clearTimeout(longPressTimerRef.current);
+      longPressTimerRef.current = null;
+    }
+    if (longPressTriggeredRef.current) {
+      triggerRelease();
+      longPressTriggeredRef.current = false;
+    }
+  };
+
+  const handleStickerPointerDown = (
+    e: any,
+    sticker: StickerInstance
+  ) => {
+    e.stopPropagation();
+
+    if (longPressTimerRef.current !== null) {
+      window.clearTimeout(longPressTimerRef.current);
+      longPressTimerRef.current = null;
+    }
+    longPressTriggeredRef.current = false;
+
+    setSelectedKeyId(keyConfig.id);
+    setSelectedStickerId(sticker.id);
+
+    const worldPos = new THREE.Vector3();
+    const stickerGroup = stickerGroupRefs.current[sticker.id];
+    if (stickerGroup) stickerGroup.getWorldPosition(worldPos);
+
+    const planeNormal = new THREE.Vector3(0, 1, 0);
+    const plane = new THREE.Plane(planeNormal, -worldPos.y);
+
+    const hitPoint = new THREE.Vector3();
+    raycaster.setFromCamera(pointer, camera);
+    raycaster.ray.intersectPlane(plane, hitPoint);
+
+    const localOffset = new THREE.Vector2(
+      hitPoint.x - (sticker.x * keyConfig.width),
+      -hitPoint.z - (sticker.y * keyConfig.height)
+    );
+
+    activeStickerDragRef.current = {
+      id: sticker.id,
+      plane,
+      offset: localOffset,
+      size: new THREE.Vector2(keyConfig.width * 0.92, keyConfig.height * 0.92),
+    };
+
+    gl.domElement.style.cursor = 'grabbing';
+
+    const onPointerMove = () => {
+      const drag = activeStickerDragRef.current;
+      if (!drag) return;
+
+      raycaster.setFromCamera(pointer, camera);
+      const hit = new THREE.Vector3();
+      if (!raycaster.ray.intersectPlane(drag.plane, hit)) return;
+
+      const group = groupRef.current?.parent;
+      if (group) {
+        const local = group.worldToLocal(hit.clone());
+
+        let localX = (local.x / drag.size.x) * 2 - drag.offset.x / drag.size.x * 2;
+        let localY = (-local.z / drag.size.y) * 2 - drag.offset.y / drag.size.y * 2;
+
+        localX = Math.max(-0.9, Math.min(0.9, localX));
+        localY = Math.max(-0.9, Math.min(0.9, localY));
+
+        setKeyStickerPosition(keyConfig.id, drag.id, localX / 2, localY / 2);
+      }
+    };
+
+    const onPointerUp = () => {
+      activeStickerDragRef.current = null;
+      gl.domElement.style.cursor = '';
+      gl.domElement.removeEventListener('pointermove', onPointerMove);
+      gl.domElement.removeEventListener('pointerup', onPointerUp);
+      gl.domElement.removeEventListener('pointercancel', onPointerUp);
+    };
+
+    gl.domElement.addEventListener('pointermove', onPointerMove);
+    gl.domElement.addEventListener('pointerup', onPointerUp);
+    gl.domElement.addEventListener('pointercancel', onPointerUp);
+  };
+
+  const handleStickerClick = (e: any, sticker: StickerInstance) => {
     e.stopPropagation();
     setSelectedKeyId(keyConfig.id);
-    onKeySelect?.(keyConfig.id);
+    setSelectedStickerId(sticker.id);
   };
 
   const emissiveIntensity = hovered || isZoneSelected || isKeySelected ? 0.35 : isPressed ? 0.6 : 0.12;
@@ -131,11 +263,10 @@ export function KeyCap({ keyConfig, selectedZone, onKeySelect }: KeyCapProps) {
           args={[keyConfig.width * 0.92, 0.4, keyConfig.height * 0.92]}
           radius={0.08}
           smoothness={4}
-          onPointerDown={handlePointerDown}
-          onPointerUp={handlePointerUp}
-          onPointerOut={handlePointerOut}
+          onPointerDown={handlePointerDownKey}
+          onPointerUp={handlePointerUpKey}
+          onPointerOut={handlePointerOutKey}
           onPointerOver={() => setHovered(true)}
-          onClick={handleClick}
           castShadow
           receiveShadow
         >
@@ -148,17 +279,44 @@ export function KeyCap({ keyConfig, selectedZone, onKeySelect }: KeyCapProps) {
           />
         </RoundedBox>
 
-        {stickerConfig && stickerConfig.id !== 'none' && (
-          <Text
-            position={[keyConfig.width * 0.35, 0.215, -keyConfig.height * 0.3]}
-            rotation={[-Math.PI / 2, 0, 0]}
-            fontSize={fontSize * 0.7}
-            anchorX="center"
-            anchorY="middle"
-          >
-            {stickerConfig.emoji}
-          </Text>
-        )}
+        {stickers.map((sticker) => {
+          const config = STICKER_CONFIGS[sticker.type];
+          const isStickerSelected = selectedStickerId === sticker.id;
+          const stickerX = sticker.x * keyConfig.width * 0.92;
+          const stickerZ = sticker.y * keyConfig.height * 0.92;
+
+          return (
+            <group
+              key={sticker.id}
+              ref={(el) => {
+                stickerGroupRefs.current[sticker.id] = el;
+              }}
+              position={[stickerX, 0.215, stickerZ]}
+            >
+              {isStickerSelected && (
+                <mesh rotation={[-Math.PI / 2, 0, 0]}>
+                  <circleGeometry args={[fontSize * 0.55, 32]} />
+                  <meshBasicMaterial
+                    color="#f59e0b"
+                    transparent
+                    opacity={0.25}
+                    depthTest={false}
+                  />
+                </mesh>
+              )}
+              <Text
+                rotation={[-Math.PI / 2, 0, 0]}
+                fontSize={fontSize * 0.7}
+                anchorX="center"
+                anchorY="middle"
+                onPointerDown={(e) => handleStickerPointerDown(e, sticker)}
+                onClick={(e) => handleStickerClick(e, sticker)}
+              >
+                {config.emoji}
+              </Text>
+            </group>
+          );
+        })}
 
         <Text
           position={[0, 0.21, 0]}

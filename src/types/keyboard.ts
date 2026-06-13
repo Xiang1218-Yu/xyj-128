@@ -2,7 +2,7 @@ export type LayoutType = '60%' | '65%' | '75%' | 'TKL' | 'Full';
 
 export type FontStyle = 'sans' | 'serif' | 'mono' | 'rounded' | 'display';
 
-export type StickerType = 'none' | 'cat' | 'star' | 'heart' | 'fire' | 'lightning' | 'music' | 'gamepad' | 'coffee' | 'rocket' | 'diamond' | 'crown';
+export type StickerType = 'cat' | 'star' | 'heart' | 'fire' | 'lightning' | 'music' | 'gamepad' | 'coffee' | 'rocket' | 'diamond' | 'crown';
 
 export type KeyZone = 
   | 'alphanumeric'
@@ -75,9 +75,16 @@ export interface StickerConfig {
   color: string;
 }
 
+export interface StickerInstance {
+  id: string;
+  type: StickerType;
+  x: number;
+  y: number;
+}
+
 export interface KeyCustom {
   label?: string;
-  sticker?: StickerType;
+  stickers?: StickerInstance[];
 }
 
 export interface KeyboardState {
@@ -91,6 +98,7 @@ export interface KeyboardState {
   fontSize: number;
   fontColor: string;
   selectedKeyId: string | null;
+  selectedStickerId: string | null;
   keyCustoms: Record<string, KeyCustom>;
 }
 
@@ -107,8 +115,11 @@ export interface KeyboardActions {
   setFontSize: (fontSize: number) => void;
   setFontColor: (fontColor: string) => void;
   setSelectedKeyId: (keyId: string | null) => void;
+  setSelectedStickerId: (stickerId: string | null) => void;
   setKeyLabel: (keyId: string, label: string) => void;
-  setKeySticker: (keyId: string, sticker: StickerType) => void;
+  addKeySticker: (keyId: string, stickerType: StickerType) => void;
+  removeKeySticker: (keyId: string, stickerId: string) => void;
+  setKeyStickerPosition: (keyId: string, stickerId: string, x: number, y: number) => void;
   resetKeyCustom: (keyId: string) => void;
   resetAllKeyCustoms: () => void;
 }
