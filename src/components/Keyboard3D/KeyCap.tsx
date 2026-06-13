@@ -56,7 +56,8 @@ export function KeyCap({ keyConfig, selectedZone, onKeySelect }: KeyCapProps) {
     id: string;
     plane: THREE.Plane;
     offset: THREE.Vector2;
-    size: THREE.Vector2;
+    keyCenter: THREE.Vector2;
+    keySize: THREE.Vector2;
   } | null>(null);
   const stickerGroupRefs = useRef<Record<string, THREE.Group | null>>({});
 
@@ -174,27 +175,38 @@ export function KeyCap({ keyConfig, selectedZone, onKeySelect }: KeyCapProps) {
     setSelectedKeyId(keyConfig.id);
     setSelectedStickerId(sticker.id);
 
-    const worldPos = new THREE.Vector3();
     const stickerGroup = stickerGroupRefs.current[sticker.id];
-    if (stickerGroup) stickerGroup.getWorldPosition(worldPos);
+    if (!stickerGroup) return;
 
-    const planeNormal = new THREE.Vector3(0, 1, 0);
-    const plane = new THREE.Plane(planeNormal, -worldPos.y);
+    const stickerWorldPos = new THREE.Vector3();
+    stickerGroup.getWorldPosition(stickerWorldPos);
+
+    const plane = new THREE.Plane(new THREE.Vector3(0, 1, 0), -stickerWorldPos.y);
 
     const hitPoint = new THREE.Vector3();
     raycaster.setFromCamera(pointer, camera);
     raycaster.ray.intersectPlane(plane, hitPoint);
 
-    const localOffset = new THREE.Vector2(
-      hitPoint.x - (sticker.x * keyConfig.width),
-      -hitPoint.z - (sticker.y * keyConfig.height)
+    const dragOffset = new THREE.Vector2(
+      hitPoint.x - stickerWorldPos.x,
+      hitPoint.z - stickerWorldPos.z
     );
+
+    const keyCapRoot = groupRef.current?.parent;
+    if (!keyCapRoot) return;
+
+    const keyCapWorldPos = new THREE.Vector3();
+    keyCapRoot.getWorldPosition(keyCapWorldPos);
+
+    const keyWidth = keyConfig.width * 0.92;
+    const keyHeight = keyConfig.height * 0.92;
 
     activeStickerDragRef.current = {
       id: sticker.id,
       plane,
-      offset: localOffset,
-      size: new THREE.Vector2(keyConfig.width * 0.92, keyConfig.height * 0.92),
+      offset: dragOffset,
+      keyCenter: new THREE.Vector2(keyCapWorldPos.x, keyCapWorldPos.z),
+      keySize: new THREE.Vector2(keyWidth, keyHeight),
     };
 
     setIsDraggingSticker(true);
@@ -208,18 +220,17 @@ export function KeyCap({ keyConfig, selectedZone, onKeySelect }: KeyCapProps) {
       const hit = new THREE.Vector3();
       if (!raycaster.ray.intersectPlane(drag.plane, hit)) return;
 
-      const group = groupRef.current?.parent;
-      if (group) {
-        const local = group.worldToLocal(hit.clone());
+      const stickerWorldX = hit.x - drag.offset.x;
+      const stickerWorldZ = hit.z - drag.offset.y;
 
-        let localX = (local.x / drag.size.x) * 2 - drag.offset.x / drag.size.x * 2;
-        let localY = (-local.z / drag.size.y) * 2 - drag.offset.y / drag.size.y * 2;
+      let localX = (stickerWorldX - drag.keyCenter.x) / drag.keySize.x;
+      let localY = (stickerWorldZ - drag.keyCenter.y) / drag.keySize.y;
 
-        localX = Math.max(-0.9, Math.min(0.9, localX));
-        localY = Math.max(-0.9, Math.min(0.9, localY));
+      const maxPos = 0.45;
+      localX = Math.max(-maxPos, Math.min(maxPos, localX));
+      localY = Math.max(-maxPos, Math.min(maxPos, localY));
 
-        setKeyStickerPosition(keyConfig.id, drag.id, localX / 2, localY / 2);
-      }
+      setKeyStickerPosition(keyConfig.id, drag.id, localX, localY);
     };
 
     const onPointerUp = () => {
