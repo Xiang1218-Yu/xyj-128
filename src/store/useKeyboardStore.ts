@@ -1,9 +1,10 @@
 import { create } from 'zustand';
-import { KeyboardState, KeyboardActions, LayoutType, CaseMaterial, KeyZone, SwitchType, FontStyle, StickerType, LightingMode, KeyTransform, LayoutConfig } from '@/types/keyboard';
+import { KeyboardState, KeyboardActions, LayoutType, CaseMaterial, KeyZone, SwitchType, FontStyle, StickerType, LightingMode, KeyTransform, LayoutConfig, SnapGridSize } from '@/types/keyboard';
 import { DEFAULT_ZONE_COLORS } from '@/data/zones';
 import { DEFAULT_FONT_SIZE, DEFAULT_FONT_COLOR } from '@/data/fonts';
 import { DEFAULT_RGB_COLORS, DEFAULT_RGB_BRIGHTNESS, DEFAULT_RGB_SPEED } from '@/data/lighting';
 import { LAYOUT_CONFIGS } from '@/data/layouts';
+import { checkCollisionWithOthers, snapTransformToGrid, findNonCollidingPosition, clampToBounds } from '@/utils/layoutUtils';
 
 interface KeyboardStore extends KeyboardState, KeyboardActions {}
 
@@ -45,6 +46,9 @@ export const useKeyboardStore = create<KeyboardStore>((set, get) => ({
   isDraggingKey: false,
   isResizingKey: false,
   savedCustomLayouts: loadSavedLayouts(),
+  snapToGrid: true,
+  snapGridSize: 0.05,
+  collisionDetection: true,
 
   setLayout: (layout: LayoutType) => {
     set({ layout });
@@ -244,18 +248,104 @@ export const useKeyboardStore = create<KeyboardStore>((set, get) => ({
 
   setKeyTransform: (keyId: string, transform: Partial<KeyTransform>) => {
     set((state) => {
+      const layoutConfig = LAYOUT_CONFIGS[state.layout];
+      const baseKey = layoutConfig.keys.find((k) => k.id === keyId);
+      if (!baseKey) return {};
+
       const existing = state.keyCustoms[keyId];
       const existingTransform = existing?.transform ?? {};
-      const mergedTransform = { ...existingTransform, ...transform };
-      const hasChanges = Object.keys(mergedTransform).some(
-        (k) => mergedTransform[k as keyof KeyTransform] !== undefined
+
+      const effectiveX = transform.x ?? existingTransform.x ?? baseKey.x;
+      const effectiveY = transform.y ?? existingTransform.y ?? baseKey.y;
+      const effectiveWidth = transform.width ?? existingTransform.width ?? baseKey.width;
+      const effectiveHeight = transform.height ?? existingTransform.height ?? baseKey.height;
+
+      let finalX = effectiveX;
+      let finalY = effectiveY;
+      let finalWidth = effectiveWidth;
+      let finalHeight = effectiveHeight;
+
+      if (state.snapToGrid) {
+        const snapped = snapTransformToGrid(
+          {
+            x: finalX,
+            y: finalY,
+            width: finalWidth,
+            height: finalHeight,
+          },
+          state.snapGridSize
+        );
+        finalX = snapped.x ?? finalX;
+        finalY = snapped.y ?? finalY;
+        finalWidth = snapped.width ?? finalWidth;
+        finalHeight = snapped.height ?? finalHeight;
+      }
+
+      const clamped = clampToBounds(
+        finalX,
+        finalY,
+        finalWidth,
+        finalHeight,
+        layoutConfig.width,
+        layoutConfig.height
       );
+      finalX = clamped.x;
+      finalY = clamped.y;
+
+      if (state.collisionDetection) {
+        const { collides } = checkCollisionWithOthers(
+          keyId,
+          finalX,
+          finalY,
+          finalWidth,
+          finalHeight,
+          layoutConfig.keys,
+          state.keyCustoms,
+          0.02
+        );
+
+        if (collides) {
+          const nonColliding = findNonCollidingPosition(
+            keyId,
+            finalX,
+            finalY,
+            finalWidth,
+            finalHeight,
+            layoutConfig.keys,
+            state.keyCustoms
+          );
+          finalX = nonColliding.x;
+          finalY = nonColliding.y;
+
+          if (state.snapToGrid) {
+            finalX = snapTransformToGrid({ x: finalX }, state.snapGridSize).x ?? finalX;
+            finalY = snapTransformToGrid({ y: finalY }, state.snapGridSize).y ?? finalY;
+          }
+        }
+      }
+
+      const newTransform: KeyTransform = {};
+      if (finalX !== baseKey.x) newTransform.x = finalX;
+      if (finalY !== baseKey.y) newTransform.y = finalY;
+      if (finalWidth !== baseKey.width) newTransform.width = finalWidth;
+      if (finalHeight !== baseKey.height) newTransform.height = finalHeight;
+
+      const hasTransform = Object.keys(newTransform).length > 0;
+      const { transform: _ignored, ...restOfExisting } = existing ?? {};
+      const hasOtherCustomizations = Object.keys(restOfExisting).length > 0;
+
+      if (!hasTransform && !hasOtherCustomizations) {
+        const newKeyCustoms = { ...state.keyCustoms };
+        delete newKeyCustoms[keyId];
+        return { keyCustoms: newKeyCustoms };
+      }
+
       return {
         keyCustoms: {
           ...state.keyCustoms,
           [keyId]: {
             ...existing,
-            transform: hasChanges ? mergedTransform : undefined,
+            transform: hasTransform ? newTransform : undefined,
           },
         },
       };
@@ -358,6 +448,18 @@ export const useKeyboardStore = create<KeyboardStore>((set, get) => ({
       return { savedCustomLayouts: newSaved };
     });
   },
+
+  setSnapToGrid: (snapToGrid: boolean) => {
+    set({ snapToGrid });
+  },
+
+  setSnapGridSize: (snapGridSize: SnapGridSize) => {
+    set({ snapGridSize });
+  },
+
+  setCollisionDetection: (collisionDetection: boolean) => {
+    set({ collisionDetection });
+  },
 }));
 
 export const useLayout = () => useKeyboardStore((state) => state.layout);
@@ -400,3 +502,7 @@ export const getEffectiveKeyConfig = (keyConfig: any, keyCustoms: Record<string,
     height: custom.transform.height ?? keyConfig.height,
   };
 };
+
+export const useSnapToGrid = () => useKeyboardStore((state) => state.snapToGrid);
+export const useSnapGridSize = () => useKeyboardStore((state) => state.snapGridSize);
+export const useCollisionDetection = () => useKeyboardStore((state) => state.collisionDetection);

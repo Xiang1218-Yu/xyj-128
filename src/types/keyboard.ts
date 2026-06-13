@@ -117,6 +117,8 @@ export interface ZoneRGBConfig {
   color: string;
 }
 
+export type SnapGridSize = 0.01 | 0.05 | 0.1 | 0.25 | 0.5;
+
 export interface KeyboardState {
   layout: LayoutType;
   caseMaterial: CaseMaterial;
@@ -140,6 +142,9 @@ export interface KeyboardState {
   isDraggingKey: boolean;
   isResizingKey: boolean;
   savedCustomLayouts: Record<string, LayoutConfig>;
+  snapToGrid: boolean;
+  snapGridSize: SnapGridSize;
+  collisionDetection: boolean;
 }
 
 export interface KeyboardActions {
@@ -178,4 +183,7 @@ export interface KeyboardActions {
   saveCustomLayout: (name: string) => void;
   loadCustomLayout: (name: string) => void;
   deleteCustomLayout: (name: string) => void;
+  setSnapToGrid: (enabled: boolean) => void;
+  setSnapGridSize: (size: SnapGridSize) => void;
+  setCollisionDetection: (enabled: boolean) => void;
 }

@@ -1,4 +1,4 @@
-import { Grid3X3, RotateCcw, Save, Trash2, Move, Maximize, Minimize, ChevronDown, ChevronUp, FolderOpen, PenTool } from 'lucide-react';
+import { Grid3X3, RotateCcw, Save, Trash2, Move, Maximize, Minimize, ChevronDown, ChevronUp, FolderOpen, PenTool, Magnet, Shield, ShieldOff } from 'lucide-react';
 import { useState } from 'react';
 import {
   useKeyboardStore,
@@ -6,10 +6,14 @@ import {
   useSelectedKeyId,
   useKeyTransform,
   useSavedCustomLayouts,
+  useSnapToGrid,
+  useSnapGridSize,
+  useCollisionDetection,
 } from '@/store/useKeyboardStore';
 import { useLayout } from '@/store/useKeyboardStore';
 import { LAYOUT_CONFIGS } from '@/data/layouts';
-import { KeyTransform } from '@/types/keyboard';
+import { KeyTransform, SnapGridSize } from '@/types/keyboard';
+import { snapToGrid as snapValueToGrid, SNAP_GRID_OPTIONS } from '@/utils/layoutUtils';
 
 export function LayoutEditor() {
   const layoutEditMode = useLayoutEditMode();
@@ -23,6 +27,12 @@ export function LayoutEditor() {
   const saveCustomLayout = useKeyboardStore((state) => state.saveCustomLayout);
   const loadCustomLayout = useKeyboardStore((state) => state.loadCustomLayout);
   const deleteCustomLayout = useKeyboardStore((state) => state.deleteCustomLayout);
+  const snapToGrid = useSnapToGrid();
+  const snapGridSize = useSnapGridSize();
+  const collisionDetection = useCollisionDetection();
+  const setSnapToGrid = useKeyboardStore((state) => state.setSnapToGrid);
+  const setSnapGridSize = useKeyboardStore((state) => state.setSnapGridSize);
+  const setCollisionDetection = useKeyboardStore((state) => state.setCollisionDetection);
 
   const layout = useLayout();
   const layoutConfig = LAYOUT_CONFIGS[layout];
@@ -33,6 +43,7 @@ export function LayoutEditor() {
 
   const [showSaveDialog, setShowSaveDialog] = useState(false);
   const [showLoadDialog, setShowLoadDialog] = useState(false);
+  const [showAdvanced, setShowAdvanced] = useState(true);
   const [layoutName, setLayoutName] = useState('');
   const [saveError, setSaveError] = useState('');
 
@@ -49,13 +60,16 @@ export function LayoutEditor() {
     if (!selectedKeyId) return;
     const num = parseFloat(value);
     if (isNaN(num)) return;
-    let clamped = num;
-    if (field === 'x' || field === 'y') {
-      clamped = Math.max(-5, Math.min(30, num));
-    } else if (field === 'width' || field === 'height') {
-      clamped = Math.max(0.5, Math.min(20, num));
+    let finalVal = num;
+    if (snapToGrid) {
+      finalVal = snapValueToGrid(num, snapGridSize);
     }
-    setKeyTransform(selectedKeyId, { [field]: clamped });
+    if (field === 'x' || field === 'y') {
+      finalVal = Math.max(-5, Math.min(30, finalVal));
+    } else if (field === 'width' || field === 'height') {
+      finalVal = Math.max(0.5, Math.min(20, finalVal));
+    }
+    setKeyTransform(selectedKeyId, { [field]: finalVal });
   };
 
   const handleStepChange = (field: keyof KeyTransform, step: number) => {
@@ -64,14 +78,17 @@ export function LayoutEditor() {
       ? (selectedKeyConfig?.[field] ?? 0)
       : (selectedKeyConfig?.[field] ?? 1);
     const current = keyTransform?.[field] ?? base;
-    const newValue = (current as number) + step;
-    let clamped = newValue;
-    if (field === 'x' || field === 'y') {
-      clamped = Math.max(-5, Math.min(30, newValue));
-    } else if (field === 'width' || field === 'height') {
-      clamped = Math.max(0.5, Math.min(20, newValue));
+    const gridStep = snapToGrid ? Math.max(step, snapGridSize) : step;
+    let newValue = (current as number) + gridStep;
+    if (snapToGrid) {
+      newValue = snapValueToGrid(newValue, snapGridSize);
     }
-    setKeyTransform(selectedKeyId, { [field]: clamped });
+    if (field === 'x' || field === 'y') {
+      newValue = Math.max(-5, Math.min(30, newValue));
+    } else if (field === 'width' || field === 'height') {
+      newValue = Math.max(0.5, Math.min(20, newValue));
+    }
+    setKeyTransform(selectedKeyId, { [field]: newValue });
   };
 
   const handleSaveLayout = () => {
@@ -173,6 +190,118 @@ export function LayoutEditor() {
           </button>
         )}
 
+        {layoutEditMode && (
+          <div className="p-3 bg-gray-800/40 rounded-xl border border-gray-700/50">
+            <button
+              onClick={() => setShowAdvanced(!showAdvanced)}
+              className="w-full flex items-center justify-between mb-2"
+            >
+              <span className="flex items-center gap-1.5 text-xs font-medium text-gray-300">
+                <Magnet className="w-3.5 h-3.5 text-purple-400" />
+                吸附与碰撞
+              </span>
+              {showAdvanced ? (
+                <ChevronUp className="w-3.5 h-3.5 text-gray-500" />
+              ) : (
+                <ChevronDown className="w-3.5 h-3.5 text-gray-500" />
+              )}
+            </button>
+
+            {showAdvanced && (
+              <div className="space-y-3 pt-1">
+                <div className="flex items-center justify-between">
+                  <span className="flex items-center gap-2 text-xs text-gray-400">
+                    <Magnet
+                      className={`w-3.5 h-3.5 ${snapToGrid ? 'text-purple-400' : 'text-gray-600'}`}
+                    />
+                    网格吸附
+                  </span>
+                  <button
+                    onClick={() => setSnapToGrid(!snapToGrid)}
+                    className={`relative w-9 h-5 rounded-full transition-all duration-200 ${
+                      snapToGrid ? 'bg-purple-600' : 'bg-gray-700'
+                    }`}
+                  >
+                    <span
+                      className={`absolute top-0.5 w-4 h-4 bg-white rounded-full shadow transition-all duration-200 ${
+                        snapToGrid ? 'left-4' : 'left-0.5'
+                      }`}
+                    />
+                  </button>
+                </div>
+
+                {snapToGrid && (
+                  <div className="ml-5.5 space-y-1">
+                    <div className="text-[10px] text-gray-500 mb-1.5">吸附精度</div>
+                    <div className="grid grid-cols-3 gap-1">
+                      {SNAP_GRID_OPTIONS.map((opt) => (
+                        <button
+                          key={opt.value}
+                          onClick={() => setSnapGridSize(opt.value)}
+                          className={`px-1.5 py-1 rounded text-[10px] font-medium transition-all ${
+                            snapGridSize === opt.value
+                              ? 'bg-purple-600/30 text-purple-300 border border-purple-500/40'
+                              : 'bg-gray-800/60 text-gray-500 border border-gray-700/40 hover:text-gray-300'
+                          }`}
+                        >
+                          {opt.value}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                <div className="w-full h-px bg-gray-700/50 my-2" />
+
+                <div className="flex items-center justify-between">
+                  <span className="flex items-center gap-2 text-xs text-gray-400">
+                    {collisionDetection ? (
+                      <Shield className="w-3.5 h-3.5 text-cyan-400" />
+                    ) : (
+                      <ShieldOff className="w-3.5 h-3.5 text-gray-600" />
+                    )}
+                    碰撞检测
+                  </span>
+                  <button
+                    onClick={() => setCollisionDetection(!collisionDetection)}
+                    className={`relative w-9 h-5 rounded-full transition-all duration-200 ${
+                      collisionDetection ? 'bg-cyan-600' : 'bg-gray-700'
+                    }`}
+                  >
+                    <span
+                      className={`absolute top-0.5 w-4 h-4 bg-white rounded-full shadow transition-all duration-200 ${
+                        collisionDetection ? 'left-4' : 'left-0.5'
+                      }`}
+                    />
+                  </button>
+                </div>
+
+                {collisionDetection && (
+                  <div className="ml-5.5 p-2 bg-cyan-900/10 border border-cyan-500/20 rounded-lg">
+                    <div className="text-[10px] text-cyan-400">
+                      ✓ 键帽无法相互重叠
+                    </div>
+                    <div className="text-[10px] text-gray-500 mt-0.5">
+                      碰撞时边框变红，释放后自动寻找附近空位
+                    </div>
+                  </div>
+                )}
+
+                {!collisionDetection && (
+                  <div className="ml-5.5 p-2 bg-orange-900/10 border border-orange-500/20 rounded-lg">
+                    <div className="text-[10px] text-orange-400">
+                      ⚠ 碰撞检测已关闭
+                    </div>
+                    <div className="text-[10px] text-gray-500 mt-0.5">
+                      键帽可自由重叠放置
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        )}
+
         {layoutEditMode && selectedKeyConfig && (
           <div className="p-3 bg-gray-800/40 rounded-xl border border-gray-700/50 space-y-3">
             <div className="flex items-center justify-between">
@@ -181,6 +310,18 @@ export function LayoutEditor() {
                   {selectedKeyConfig.label}
                 </div>
                 <span className="text-[10px] text-gray-500">精确调整</span>
+                {snapToGrid && (
+                  <span className="flex items-center gap-0.5 px-1.5 py-0.5 bg-purple-600/20 text-purple-300 text-[9px] rounded">
+                    <Magnet className="w-2.5 h-2.5" />
+                    吸附
+                  </span>
+                )}
+                {collisionDetection && (
+                  <span className="flex items-center gap-0.5 px-1.5 py-0.5 bg-cyan-600/20 text-cyan-300 text-[9px] rounded">
+                    <Shield className="w-2.5 h-2.5" />
+                    碰撞
+                  </span>
+                )}
               </div>
               <button
                 onClick={() => resetKeyTransform(selectedKeyId!)}

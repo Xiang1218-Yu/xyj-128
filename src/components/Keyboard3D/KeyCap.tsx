@@ -25,6 +25,8 @@ import {
   useLayoutEditMode,
   useIsDraggingKey,
   useIsResizingKey,
+  useSnapToGrid,
+  useCollisionDetection,
 } from '@/store/useKeyboardStore';
 import { useCurrentHighlightKeyId, useIsTypingGameActive } from '@/store/useTypingGameStore';
 import { playPressSound, playReleaseSound } from '@/utils/switchSound';
@@ -33,6 +35,7 @@ import { STICKER_CONFIGS } from '@/data/stickers';
 import { LAYOUT_CONFIGS } from '@/data/layouts';
 import { ZONE_LIST } from '@/data/zones';
 import { KeyZone } from '@/types/keyboard';
+import { checkCollisionWithOthers } from '@/utils/layoutUtils';
 
 const LONG_PRESS_THRESHOLD = 200;
 
@@ -145,6 +148,34 @@ export function KeyCap({ keyConfig, selectedZone, onKeySelect }: KeyCapProps) {
   const isZoneSelected = selectedZone === keyConfig.zone;
   const isKeySelected = selectedKeyId === keyConfig.id;
   const isHighlighted = isTypingGameActive && highlightKeyId === keyConfig.id;
+  const snapToGrid = useSnapToGrid();
+  const collisionDetection = useCollisionDetection();
+
+  const keyCustoms = useKeyboardStore((state) => state.keyCustoms);
+  const hasCollision = useMemo(() => {
+    if (!collisionDetection || !layoutEditMode) return false;
+    const { collides } = checkCollisionWithOthers(
+      keyConfig.id,
+      effectiveX,
+      effectiveY,
+      effectiveWidth,
+      effectiveHeight,
+      layoutConfig.keys,
+      keyCustoms,
+      0.02
+    );
+    return collides;
+  }, [
+    collisionDetection,
+    layoutEditMode,
+    keyConfig.id,
+    effectiveX,
+    effectiveY,
+    effectiveWidth,
+    effectiveHeight,
+    layoutConfig.keys,
+    keyCustoms,
+  ]);
 
   const displayLabel = keyCustom?.label ?? keyConfig.label;
   const stickers: StickerInstance[] = keyCustom?.stickers ?? [];
@@ -734,7 +765,11 @@ export function KeyCap({ keyConfig, selectedZone, onKeySelect }: KeyCapProps) {
                   ),
                 ]}
               />
-              <lineBasicMaterial attach="material" color="#22d3ee" linewidth={2} />
+              <lineBasicMaterial
+                attach="material"
+                color={hasCollision ? '#ef4444' : '#22d3ee'}
+                linewidth={2}
+              />
             </lineSegments>
 
             <mesh
@@ -755,11 +790,28 @@ export function KeyCap({ keyConfig, selectedZone, onKeySelect }: KeyCapProps) {
             >
               <boxGeometry args={[resizeHandleSize, 0.1, resizeHandleSize]} />
               <meshStandardMaterial
-                color="#22d3ee"
-                emissive="#22d3ee"
-                emissiveIntensity={0.5}
+                color={hasCollision ? '#ef4444' : '#22d3ee'}
+                emissive={hasCollision ? '#ef4444' : '#22d3ee'}
+                emissiveIntensity={hasCollision ? 0.8 : 0.5}
               />
             </mesh>
+
+            {snapToGrid && (
+              <mesh
+                position={[
+                  -(effectiveWidth * 0.92) / 2,
+                  0.3,
+                  (effectiveHeight * 0.92) / 2,
+                ]}
+              >
+                <boxGeometry args={[0.12, 0.04, 0.12]} />
+                <meshStandardMaterial
+                  color="#8b5cf6"
+                  emissive="#8b5cf6"
+                  emissiveIntensity={0.6}
+                />
+              </mesh>
+            )}
           </>
         )}
 

@@ -129,7 +129,7 @@ export function ControlPanel({ selectedZone, onZoneChange, onExport, isExporting
               <Grid3X3 className="w-4 h-4 text-emerald-400 mt-0.5 flex-shrink-0" />
               <div className="text-xs text-gray-400">
                 <div className="text-gray-300 mb-0.5">自定义布局</div>
-                <div>进入编辑模式后拖动键帽移动位置，拖动右下角方块调整大小</div>
+                <div>进入编辑模式后拖动键帽移动位置，拖动右下角方块调整大小。默认开启网格吸附和碰撞检测，可在"吸附与碰撞"中调整。</div>
               </div>
             </div>
           </div>
