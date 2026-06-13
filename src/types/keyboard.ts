@@ -87,6 +87,28 @@ export interface KeyCustom {
   stickers?: StickerInstance[];
 }
 
+export type LightingMode =
+  | 'static'
+  | 'breathing'
+  | 'wave'
+  | 'rainbow'
+  | 'reactive'
+  | 'ripple'
+  | 'starlight'
+  | 'marquee';
+
+export interface LightingModeConfig {
+  id: LightingMode;
+  name: string;
+  description: string;
+  icon: string;
+}
+
+export interface ZoneRGBConfig {
+  enabled: boolean;
+  color: string;
+}
+
 export interface KeyboardState {
   layout: LayoutType;
   caseMaterial: CaseMaterial;
@@ -101,6 +123,11 @@ export interface KeyboardState {
   selectedStickerId: string | null;
   isDraggingSticker: boolean;
   keyCustoms: Record<string, KeyCustom>;
+  rgbEnabled: boolean;
+  lightingMode: LightingMode;
+  rgbBrightness: number;
+  rgbSpeed: number;
+  zoneRgbColors: Record<KeyZone, string>;
 }
 
 export interface KeyboardActions {
@@ -124,4 +151,10 @@ export interface KeyboardActions {
   setKeyStickerPosition: (keyId: string, stickerId: string, x: number, y: number) => void;
   resetKeyCustom: (keyId: string) => void;
   resetAllKeyCustoms: () => void;
+  setRgbEnabled: (enabled: boolean) => void;
+  setLightingMode: (mode: LightingMode) => void;
+  setRgbBrightness: (brightness: number) => void;
+  setRgbSpeed: (speed: number) => void;
+  setZoneRgbColor: (zone: KeyZone, color: string) => void;
+  resetRgbColors: () => void;
 }

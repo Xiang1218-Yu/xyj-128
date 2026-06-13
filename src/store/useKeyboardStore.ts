@@ -1,7 +1,8 @@
 import { create } from 'zustand';
-import { KeyboardState, KeyboardActions, LayoutType, CaseMaterial, KeyZone, SwitchType, FontStyle, StickerType } from '@/types/keyboard';
+import { KeyboardState, KeyboardActions, LayoutType, CaseMaterial, KeyZone, SwitchType, FontStyle, StickerType, LightingMode } from '@/types/keyboard';
 import { DEFAULT_ZONE_COLORS } from '@/data/zones';
 import { DEFAULT_FONT_SIZE, DEFAULT_FONT_COLOR } from '@/data/fonts';
+import { DEFAULT_RGB_COLORS, DEFAULT_RGB_BRIGHTNESS, DEFAULT_RGB_SPEED } from '@/data/lighting';
 
 interface KeyboardStore extends KeyboardState, KeyboardActions {}
 
@@ -22,6 +23,11 @@ export const useKeyboardStore = create<KeyboardStore>((set) => ({
   selectedStickerId: null,
   isDraggingSticker: false,
   keyCustoms: {},
+  rgbEnabled: true,
+  lightingMode: 'rainbow',
+  rgbBrightness: DEFAULT_RGB_BRIGHTNESS,
+  rgbSpeed: DEFAULT_RGB_SPEED,
+  zoneRgbColors: { ...DEFAULT_RGB_COLORS },
 
   setLayout: (layout: LayoutType) => {
     set({ layout });
@@ -177,6 +183,35 @@ export const useKeyboardStore = create<KeyboardStore>((set) => ({
   resetAllKeyCustoms: () => {
     set({ keyCustoms: {}, selectedStickerId: null });
   },
+
+  setRgbEnabled: (rgbEnabled: boolean) => {
+    set({ rgbEnabled });
+  },
+
+  setLightingMode: (lightingMode: LightingMode) => {
+    set({ lightingMode });
+  },
+
+  setRgbBrightness: (rgbBrightness: number) => {
+    set({ rgbBrightness: Math.max(0.1, Math.min(1, rgbBrightness)) });
+  },
+
+  setRgbSpeed: (rgbSpeed: number) => {
+    set({ rgbSpeed: Math.max(0.2, Math.min(3, rgbSpeed)) });
+  },
+
+  setZoneRgbColor: (zone: KeyZone, color: string) => {
+    set((state) => ({
+      zoneRgbColors: {
+        ...state.zoneRgbColors,
+        [zone]: color,
+      },
+    }));
+  },
+
+  resetRgbColors: () => {
+    set({ zoneRgbColors: { ...DEFAULT_RGB_COLORS } });
+  },
 }));
 
 export const useLayout = () => useKeyboardStore((state) => state.layout);
@@ -196,3 +231,8 @@ export const useIsDraggingSticker = () => useKeyboardStore((state) => state.isDr
 export const useKeyCustom = (keyId: string) =>
   useKeyboardStore((state) => state.keyCustoms[keyId]);
 export const useKeyCustoms = () => useKeyboardStore((state) => state.keyCustoms);
+export const useRgbEnabled = () => useKeyboardStore((state) => state.rgbEnabled);
+export const useLightingMode = () => useKeyboardStore((state) => state.lightingMode);
+export const useRgbBrightness = () => useKeyboardStore((state) => state.rgbBrightness);
+export const useRgbSpeed = () => useKeyboardStore((state) => state.rgbSpeed);
+export const useZoneRgbColors = () => useKeyboardStore((state) => state.zoneRgbColors);

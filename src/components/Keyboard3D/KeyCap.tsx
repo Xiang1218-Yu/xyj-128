@@ -14,11 +14,21 @@ import {
   useSelectedKeyId,
   useKeyCustom,
   useSelectedStickerId,
+  useZoneColors,
+  useRgbEnabled,
+  useLightingMode,
+  useRgbSpeed,
+  useRgbBrightness,
+  useZoneRgbColors,
+  usePressedKeys,
+  useLayout,
 } from '@/store/useKeyboardStore';
-import { useZoneColors } from '@/store/useKeyboardStore';
 import { playPressSound, playReleaseSound } from '@/utils/switchSound';
 import { FONT_CONFIGS } from '@/data/fonts';
 import { STICKER_CONFIGS } from '@/data/stickers';
+import { LAYOUT_CONFIGS } from '@/data/layouts';
+import { ZONE_LIST } from '@/data/zones';
+import { KeyZone } from '@/types/keyboard';
 
 const LONG_PRESS_THRESHOLD = 200;
 
@@ -28,9 +38,35 @@ interface KeyCapProps {
   onKeySelect?: (keyId: string) => void;
 }
 
+interface Ripple {
+  keyId: string;
+  startTime: number;
+  x: number;
+  y: number;
+}
+
+function hexToRgb(hex: string): THREE.Color {
+  return new THREE.Color(hex);
+}
+
+function hslToRgb(h: number, s: number, l: number): THREE.Color {
+  const color = new THREE.Color();
+  color.setHSL(h, s, l);
+  return color;
+}
+
+function lerpColor(a: THREE.Color, b: THREE.Color, t: number): THREE.Color {
+  return a.clone().lerp(b, t);
+}
+
+const ripplesGlobal: Ripple[] = [];
+const starlightPhaseGlobal: Record<string, number> = {};
+const lastPressedKeysGlobal: Set<string> = new Set();
+
 export function KeyCap({ keyConfig, selectedZone, onKeySelect }: KeyCapProps) {
   const groupRef = useRef<THREE.Group>(null);
   const meshRef = useRef<THREE.Mesh>(null);
+  const backlightRef = useRef<THREE.Mesh>(null);
   const [hovered, setHovered] = useState(false);
   const isPressed = useIsKeyPressed(keyConfig.id);
   const zoneColors = useZoneColors();
@@ -48,6 +84,15 @@ export function KeyCap({ keyConfig, selectedZone, onKeySelect }: KeyCapProps) {
   const setSelectedStickerId = useKeyboardStore((state) => state.setSelectedStickerId);
   const setKeyStickerPosition = useKeyboardStore((state) => state.setKeyStickerPosition);
   const setIsDraggingSticker = useKeyboardStore((state) => state.setIsDraggingSticker);
+
+  const rgbEnabled = useRgbEnabled();
+  const lightingMode = useLightingMode();
+  const rgbSpeed = useRgbSpeed();
+  const rgbBrightness = useRgbBrightness();
+  const zoneRgbColors = useZoneRgbColors();
+  const pressedKeys = usePressedKeys();
+  const layout = useLayout();
+  const layoutConfig = LAYOUT_CONFIGS[layout];
 
   const pointerDownTimeRef = useRef<number>(0);
   const longPressTimerRef = useRef<number | null>(null);
@@ -73,7 +118,124 @@ export function KeyCap({ keyConfig, selectedZone, onKeySelect }: KeyCapProps) {
   const pressDepth = useMemo(() => (isPressed ? -0.18 : 0), [isPressed]);
   const targetScale = useMemo(() => (isPressed ? 0.985 : 1), [isPressed]);
 
-  useFrame((_, delta) => {
+  const totalWidth = layoutConfig.width;
+  const totalHeight = layoutConfig.height;
+
+  const rgbColorRef = useRef<THREE.Color>(new THREE.Color(zoneRgbColors[keyConfig.zone]));
+  const rgbIntensityRef = useRef<number>(0);
+
+  const getLightingColor = (time: number): THREE.Color => {
+    const t = time * rgbSpeed;
+    const baseColor = hexToRgb(zoneRgbColors[keyConfig.zone]);
+
+    switch (lightingMode) {
+      case 'static':
+        return baseColor;
+
+      case 'breathing': {
+        const breath = (Math.sin(t * 2) + 1) / 2;
+        const intensity = 0.3 + breath * 0.7;
+        return baseColor.clone().multiplyScalar(intensity);
+      }
+
+      case 'wave': {
+        const keyCenterX = keyConfig.x + keyConfig.width / 2;
+        const normalizedX = keyCenterX / totalWidth;
+        const wave = Math.sin(normalizedX * Math.PI * 4 - t * 3) * 0.5 + 0.5;
+        const hue = (normalizedX + t * 0.15) % 1;
+        const waveColor = hslToRgb(hue, 0.85, 0.55);
+        return lerpColor(baseColor, waveColor, wave);
+      }
+
+      case 'rainbow': {
+        const keyCenterX = keyConfig.x + keyConfig.width / 2;
+        const keyCenterY = keyConfig.y + keyConfig.height / 2;
+        const normalizedX = keyCenterX / totalWidth;
+        const normalizedY = keyCenterY / totalHeight;
+        const hue = (normalizedX * 0.6 + normalizedY * 0.2 + t * 0.2) % 1;
+        return hslToRgb(hue, 0.9, 0.6);
+      }
+
+      case 'reactive': {
+        if (isPressed) {
+          const white = new THREE.Color('#ffffff');
+          return lerpColor(baseColor, white, 0.7);
+        }
+        return baseColor.clone().multiplyScalar(0.4);
+      }
+
+      case 'ripple': {
+        const newPressed = [...pressedKeys].filter(
+          (k) => !lastPressedKeysGlobal.has(k)
+        );
+        newPressed.forEach((keyId) => {
+          const key = layoutConfig.keys.find((k) => k.id === keyId);
+          if (key) {
+            ripplesGlobal.push({
+              keyId,
+              startTime: time,
+              x: key.x + key.width / 2,
+              y: key.y + key.height / 2,
+            });
+          }
+        });
+
+        for (let i = ripplesGlobal.length - 1; i >= 0; i--) {
+          if (time - ripplesGlobal[i].startTime > 1.5) {
+            ripplesGlobal.splice(i, 1);
+          }
+        }
+
+        let outColor = baseColor.clone().multiplyScalar(0.3);
+        const keyCenterX = keyConfig.x + keyConfig.width / 2;
+        const keyCenterY = keyConfig.y + keyConfig.height / 2;
+
+        ripplesGlobal.forEach((ripple) => {
+          const dx = keyCenterX - ripple.x;
+          const dy = keyCenterY - ripple.y;
+          const dist = Math.sqrt(dx * dx + dy * dy);
+          const age = time - ripple.startTime;
+          const waveRadius = age * 20;
+          const waveWidth = 4;
+          const wave = Math.exp(-Math.pow((dist - waveRadius) / waveWidth, 2));
+          const hue = (ripple.startTime * 0.5 + age * 0.5) % 1;
+          const rippleColor = hslToRgb(hue, 0.9, 0.6);
+          outColor = lerpColor(outColor, rippleColor, wave * 0.8);
+        });
+
+        lastPressedKeysGlobal.clear();
+        pressedKeys.forEach((k) => lastPressedKeysGlobal.add(k));
+        return outColor;
+      }
+
+      case 'starlight': {
+        if (!starlightPhaseGlobal[keyConfig.id]) {
+          starlightPhaseGlobal[keyConfig.id] = Math.random() * Math.PI * 2;
+        }
+        const phase = starlightPhaseGlobal[keyConfig.id];
+        const twinkleSpeed = 1.5 + ((keyConfig.row + keyConfig.col) % 3) * 0.5;
+        const twinkle = Math.sin(t * twinkleSpeed + phase) * 0.5 + 0.5;
+        const intensity = 0.2 + twinkle * 0.8;
+        const hue = (t * 0.1 + phase * 0.1) % 1;
+        const starColor = hslToRgb(hue, 0.7, 0.6);
+        return lerpColor(baseColor, starColor, twinkle * 0.6).multiplyScalar(intensity);
+      }
+
+      case 'marquee': {
+        const zoneIndex = ZONE_LIST.indexOf(keyConfig.zone);
+        const zoneCount = ZONE_LIST.length;
+        const hue = ((t * 0.3 + zoneIndex / zoneCount) % 1);
+        const zoneColor = hslToRgb(hue, 0.85, 0.55);
+        const pulse = (Math.sin(t * 4 - zoneIndex * 0.8) + 1) / 2;
+        return lerpColor(baseColor, zoneColor, 0.5 + pulse * 0.5);
+      }
+
+      default:
+        return baseColor;
+    }
+  };
+
+  useFrame((state, delta) => {
     if (groupRef.current) {
       groupRef.current.position.y = THREE.MathUtils.lerp(
         groupRef.current.position.y,
@@ -95,6 +257,27 @@ export function KeyCap({ keyConfig, selectedZone, onKeySelect }: KeyCapProps) {
         targetScale,
         delta * 14
       );
+    }
+
+    if (rgbEnabled) {
+      const animatedColor = getLightingColor(state.clock.elapsedTime);
+      rgbColorRef.current.copy(animatedColor);
+      const intensity = isPressed ? rgbBrightness * 1.2 : rgbBrightness * 0.7;
+      rgbIntensityRef.current = intensity;
+
+      if (meshRef.current) {
+        const mat = meshRef.current.material as THREE.MeshStandardMaterial;
+        mat.emissive.copy(animatedColor);
+        mat.emissiveIntensity = intensity;
+        mat.needsUpdate = true;
+      }
+
+      if (backlightRef.current) {
+        const backMat = backlightRef.current.material as THREE.MeshBasicMaterial;
+        backMat.color.copy(animatedColor);
+        backMat.opacity = Math.min(1, intensity * 1.2);
+        backMat.needsUpdate = true;
+      }
     }
   });
 
@@ -253,8 +436,8 @@ export function KeyCap({ keyConfig, selectedZone, onKeySelect }: KeyCapProps) {
     setSelectedStickerId(sticker.id);
   };
 
-  const emissiveIntensity = hovered || isZoneSelected || isKeySelected ? 0.35 : isPressed ? 0.6 : 0.12;
-  const emissiveColor = isPressed
+  const interactionEmissiveIntensity = hovered || isZoneSelected || isKeySelected ? 0.35 : isPressed ? 0.6 : 0.12;
+  const interactionEmissiveColor = isPressed
     ? '#ffffff'
     : isKeySelected
     ? '#f59e0b'
@@ -264,6 +447,9 @@ export function KeyCap({ keyConfig, selectedZone, onKeySelect }: KeyCapProps) {
     ? '#8b5cf6'
     : '#000000';
 
+  const finalEmissiveColor = rgbEnabled ? rgbColorRef.current : new THREE.Color(interactionEmissiveColor);
+  const finalEmissiveIntensity = rgbEnabled ? rgbIntensityRef.current : interactionEmissiveIntensity;
+
   const baseFontSize = keyConfig.width > 1.5 ? 0.28 : keyConfig.width > 1 ? 0.32 : 0.38;
   const fontSize = baseFontSize * (globalFontSize / 0.38);
 
@@ -271,6 +457,21 @@ export function KeyCap({ keyConfig, selectedZone, onKeySelect }: KeyCapProps) {
 
   return (
     <group position={[keyConfig.x + keyConfig.width / 2, 0, keyConfig.y + keyConfig.height / 2]}>
+      {rgbEnabled && (
+        <mesh
+          ref={backlightRef}
+          position={[0, -0.05, 0]}
+          rotation={[-Math.PI / 2, 0, 0]}
+        >
+          <planeGeometry args={[keyConfig.width * 1.0, keyConfig.height * 1.0]} />
+          <meshBasicMaterial
+            color={zoneRgbColors[keyConfig.zone]}
+            transparent
+            opacity={0.3}
+            depthWrite={false}
+          />
+        </mesh>
+      )}
       <group ref={groupRef}>
         <RoundedBox
           ref={meshRef}
@@ -288,8 +489,8 @@ export function KeyCap({ keyConfig, selectedZone, onKeySelect }: KeyCapProps) {
             color={color}
             roughness={0.28}
             metalness={0.15}
-            emissive={emissiveColor}
-            emissiveIntensity={emissiveIntensity}
+            emissive={finalEmissiveColor}
+            emissiveIntensity={finalEmissiveIntensity}
           />
         </RoundedBox>
 

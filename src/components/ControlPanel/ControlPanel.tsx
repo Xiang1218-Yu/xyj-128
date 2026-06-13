@@ -5,6 +5,7 @@ import { MaterialSelector } from './MaterialSelector';
 import { ZoneColorPicker } from './ZoneColorPicker';
 import { SwitchSelector } from './SwitchSelector';
 import { KeyCapEditor } from './KeyCapEditor';
+import { LightingControl } from './LightingControl';
 import { KeyZone } from '@/types/keyboard';
 import { useLayout } from '@/store/useKeyboardStore';
 import { LAYOUT_CONFIGS } from '@/data/layouts';
@@ -46,6 +47,8 @@ export function ControlPanel({ selectedZone, onZoneChange }: ControlPanelProps) 
         <MaterialSelector />
         <div className="w-full h-px bg-gradient-to-r from-transparent via-gray-700/50 to-transparent" />
         <SwitchSelector />
+        <div className="w-full h-px bg-gradient-to-r from-transparent via-gray-700/50 to-transparent" />
+        <LightingControl />
         <div className="w-full h-px bg-gradient-to-r from-transparent via-gray-700/50 to-transparent" />
         <ZoneColorPicker selectedZone={selectedZone} onZoneChange={onZoneChange} />
         <div className="w-full h-px bg-gradient-to-r from-transparent via-gray-700/50 to-transparent" />
