@@ -23,6 +23,7 @@ import {
   usePressedKeys,
   useLayout,
 } from '@/store/useKeyboardStore';
+import { useCurrentHighlightKeyId, useIsTypingGameActive } from '@/store/useTypingGameStore';
 import { playPressSound, playReleaseSound } from '@/utils/switchSound';
 import { FONT_CONFIGS } from '@/data/fonts';
 import { STICKER_CONFIGS } from '@/data/stickers';
@@ -78,6 +79,8 @@ export function KeyCap({ keyConfig, selectedZone, onKeySelect }: KeyCapProps) {
   const selectedKeyId = useSelectedKeyId();
   const selectedStickerId = useSelectedStickerId();
   const keyCustom = useKeyCustom(keyConfig.id);
+  const highlightKeyId = useCurrentHighlightKeyId();
+  const isTypingGameActive = useIsTypingGameActive();
   const pressKey = useKeyboardStore((state) => state.pressKey);
   const releaseKey = useKeyboardStore((state) => state.releaseKey);
   const setSelectedKeyId = useKeyboardStore((state) => state.setSelectedKeyId);
@@ -111,6 +114,7 @@ export function KeyCap({ keyConfig, selectedZone, onKeySelect }: KeyCapProps) {
   const color = zoneColors[keyConfig.zone];
   const isZoneSelected = selectedZone === keyConfig.zone;
   const isKeySelected = selectedKeyId === keyConfig.id;
+  const isHighlighted = isTypingGameActive && highlightKeyId === keyConfig.id;
 
   const displayLabel = keyCustom?.label ?? keyConfig.label;
   const stickers: StickerInstance[] = keyCustom?.stickers ?? [];
@@ -259,7 +263,24 @@ export function KeyCap({ keyConfig, selectedZone, onKeySelect }: KeyCapProps) {
       );
     }
 
-    if (rgbEnabled) {
+    if (isHighlighted) {
+      const pulseIntensity = 0.7 + Math.sin(state.clock.elapsedTime * 6) * 0.3;
+      const highlightColor = new THREE.Color('#22d3ee');
+
+      if (meshRef.current) {
+        const mat = meshRef.current.material as THREE.MeshStandardMaterial;
+        mat.emissive.copy(highlightColor);
+        mat.emissiveIntensity = pulseIntensity;
+        mat.needsUpdate = true;
+      }
+
+      if (backlightRef.current) {
+        const backMat = backlightRef.current.material as THREE.MeshBasicMaterial;
+        backMat.color.copy(highlightColor);
+        backMat.opacity = Math.min(1, pulseIntensity * 1.5);
+        backMat.needsUpdate = true;
+      }
+    } else if (rgbEnabled) {
       const animatedColor = getLightingColor(state.clock.elapsedTime);
       rgbColorRef.current.copy(animatedColor);
       const intensity = isPressed ? rgbBrightness * 1.2 : rgbBrightness * 0.7;
@@ -436,8 +457,16 @@ export function KeyCap({ keyConfig, selectedZone, onKeySelect }: KeyCapProps) {
     setSelectedStickerId(sticker.id);
   };
 
-  const interactionEmissiveIntensity = hovered || isZoneSelected || isKeySelected ? 0.35 : isPressed ? 0.6 : 0.12;
-  const interactionEmissiveColor = isPressed
+  const interactionEmissiveIntensity = isHighlighted
+    ? 0.9
+    : hovered || isZoneSelected || isKeySelected
+    ? 0.35
+    : isPressed
+    ? 0.6
+    : 0.12;
+  const interactionEmissiveColor = isHighlighted
+    ? '#22d3ee'
+    : isPressed
     ? '#ffffff'
     : isKeySelected
     ? '#f59e0b'
@@ -447,8 +476,16 @@ export function KeyCap({ keyConfig, selectedZone, onKeySelect }: KeyCapProps) {
     ? '#8b5cf6'
     : '#000000';
 
-  const finalEmissiveColor = rgbEnabled ? rgbColorRef.current : new THREE.Color(interactionEmissiveColor);
-  const finalEmissiveIntensity = rgbEnabled ? rgbIntensityRef.current : interactionEmissiveIntensity;
+  const finalEmissiveColor = isHighlighted
+    ? new THREE.Color('#22d3ee')
+    : rgbEnabled
+    ? rgbColorRef.current
+    : new THREE.Color(interactionEmissiveColor);
+  const finalEmissiveIntensity = isHighlighted
+    ? 0.9
+    : rgbEnabled
+    ? rgbIntensityRef.current
+    : interactionEmissiveIntensity;
 
   const baseFontSize = keyConfig.width > 1.5 ? 0.28 : keyConfig.width > 1 ? 0.32 : 0.38;
   const fontSize = baseFontSize * (globalFontSize / 0.38);
@@ -457,7 +494,7 @@ export function KeyCap({ keyConfig, selectedZone, onKeySelect }: KeyCapProps) {
 
   return (
     <group position={[keyConfig.x + keyConfig.width / 2, 0, keyConfig.y + keyConfig.height / 2]}>
-      {rgbEnabled && (
+      {(rgbEnabled || isHighlighted) && (
         <mesh
           ref={backlightRef}
           position={[0, -0.05, 0]}

@@ -1,4 +1,4 @@
-import { Keyboard, Info, Mouse, MousePointer2, Download } from 'lucide-react';
+import { Keyboard, Info, Mouse, MousePointer2, Download, ChevronDown, ChevronUp, Gamepad2 } from 'lucide-react';
 import { useState } from 'react';
 import { LayoutSelector } from './LayoutSelector';
 import { MaterialSelector } from './MaterialSelector';
@@ -6,6 +6,7 @@ import { ZoneColorPicker } from './ZoneColorPicker';
 import { SwitchSelector } from './SwitchSelector';
 import { KeyCapEditor } from './KeyCapEditor';
 import { LightingControl } from './LightingControl';
+import { TypingGame } from '@/components/TypingGame/TypingGame';
 import { KeyZone } from '@/types/keyboard';
 import { useLayout } from '@/store/useKeyboardStore';
 import { LAYOUT_CONFIGS } from '@/data/layouts';
@@ -19,6 +20,7 @@ interface ControlPanelProps {
 
 export function ControlPanel({ selectedZone, onZoneChange, onExport, isExporting }: ControlPanelProps) {
   const [showTips, setShowTips] = useState(true);
+  const [showTypingGame, setShowTypingGame] = useState(true);
   const layout = useLayout();
   const layoutConfig = LAYOUT_CONFIGS[layout];
 
@@ -44,6 +46,29 @@ export function ControlPanel({ selectedZone, onZoneChange, onExport, isExporting
       </div>
 
       <div className="flex-1 overflow-y-auto p-6 space-y-6">
+        <div className="space-y-3">
+          <button
+            onClick={() => setShowTypingGame(!showTypingGame)}
+            className="w-full flex items-center justify-between px-3 py-2.5 bg-gradient-to-r from-indigo-500/20 to-purple-500/20 hover:from-indigo-500/30 hover:to-purple-500/30 rounded-xl border border-indigo-500/30 transition-all group"
+          >
+            <span className="flex items-center gap-2">
+              <Gamepad2 className="w-4 h-4 text-indigo-400" />
+              <span className="text-sm text-white font-medium">打字练习小游戏</span>
+            </span>
+            {showTypingGame ? (
+              <ChevronUp className="w-4 h-4 text-gray-400 group-hover:text-white transition-colors" />
+            ) : (
+              <ChevronDown className="w-4 h-4 text-gray-400 group-hover:text-white transition-colors" />
+            )}
+          </button>
+          {showTypingGame && (
+            <div className="animate-in slide-in-from-top-2 duration-200">
+              <TypingGame />
+            </div>
+          )}
+        </div>
+
+        <div className="w-full h-px bg-gradient-to-r from-transparent via-gray-700/50 to-transparent" />
         <LayoutSelector />
         <div className="w-full h-px bg-gradient-to-r from-transparent via-gray-700/50 to-transparent" />
         <MaterialSelector />
