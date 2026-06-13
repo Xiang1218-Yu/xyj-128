@@ -5,6 +5,7 @@ import * as THREE from 'three';
 import { useCaseMaterial, useLayout } from '@/store/useKeyboardStore';
 import { MATERIAL_CONFIGS } from '@/data/materials';
 import { LAYOUT_CONFIGS } from '@/data/layouts';
+import { getMaterialTexture } from '@/utils/materialTextures';
 
 export function KeyboardCase() {
   const meshRef = useRef<THREE.Mesh>(null);
@@ -15,6 +16,12 @@ export function KeyboardCase() {
 
   const caseWidth = useMemo(() => layoutConfig.width + 0.8, [layoutConfig.width]);
   const caseDepth = useMemo(() => layoutConfig.height + 0.8, [layoutConfig.height]);
+
+  const texture = useMemo(() => {
+    const tex = getMaterialTexture(materialId);
+    tex.needsUpdate = true;
+    return tex;
+  }, [materialId]);
 
   useFrame((state) => {
     if (meshRef.current) {
@@ -37,15 +44,17 @@ export function KeyboardCase() {
           color={materialConfig.color}
           roughness={materialConfig.roughness}
           metalness={materialConfig.metalness}
+          map={texture}
+          envMapIntensity={0.6}
         />
       </RoundedBox>
 
       <mesh position={[0, 0.18, 0]} rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
         <planeGeometry args={[caseWidth - 0.5, caseDepth - 0.5]} />
         <meshStandardMaterial
-          color="#1e293b"
-          roughness={0.9}
-          metalness={0.1}
+          color="#141a28"
+          roughness={0.92}
+          metalness={0.08}
         />
       </mesh>
 

@@ -53,7 +53,7 @@ export function KeyboardScene({ selectedZone }: KeyboardSceneProps) {
   return (
     <Canvas
       shadows
-      camera={{ position: [0, 18, 22], fov: 45 }}
+      camera={{ position: [0, 20, 26], fov: 45 }}
       gl={{ antialias: true, alpha: false }}
       dpr={[1, 2]}
     >
