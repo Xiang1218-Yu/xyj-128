@@ -51,7 +51,6 @@ function drawConfigPanel(
 
   const contentY = panelY + PADDING;
   const colWidth = (canvasWidth - PADDING * 4) / 3;
-  let col = 0;
   let rowY = contentY;
 
   const drawSection = (
@@ -139,42 +138,57 @@ export async function exportSceneAsImage(
   sceneRef: MutableRefObject<THREE.Scene | null>,
   cameraRef: MutableRefObject<THREE.Camera | null>
 ) {
-  const gl = glRef.current;
   const scene = sceneRef.current;
   const camera = cameraRef.current;
+  const mainGl = glRef.current;
 
-  if (!gl || !scene || !camera) {
+  if (!mainGl || !scene || !camera) {
     return;
   }
 
   const state = useKeyboardStore.getState();
 
   const originalSize = new THREE.Vector2();
-  gl.getSize(originalSize);
-  const originalPixelRatio = gl.getPixelRatio();
+  mainGl.getSize(originalSize);
+  const originalPixelRatio = mainGl.getPixelRatio();
 
-  const hdWidth = originalSize.x * HD_SCALE;
-  const hdHeight = originalSize.y * HD_SCALE;
-  const hdPixelRatio = originalPixelRatio * HD_SCALE;
+  const hdWidth = Math.floor(originalSize.x * HD_SCALE);
+  const hdHeight = Math.floor(originalSize.y * HD_SCALE);
+  const hdPixelRatio = Math.min(originalPixelRatio * HD_SCALE, 2);
 
-  gl.setSize(hdWidth, hdHeight);
-  gl.setPixelRatio(hdPixelRatio);
+  const offscreenCanvas = document.createElement('canvas');
+  offscreenCanvas.width = Math.floor(hdWidth * hdPixelRatio);
+  offscreenCanvas.height = Math.floor(hdHeight * hdPixelRatio);
 
-  (camera as THREE.PerspectiveCamera).aspect = hdWidth / hdHeight;
-  (camera as THREE.PerspectiveCamera).updateProjectionMatrix();
+  const exportGl = new THREE.WebGLRenderer({
+    canvas: offscreenCanvas,
+    antialias: true,
+    alpha: false,
+    preserveDrawingBuffer: true,
+  });
+  exportGl.setSize(hdWidth, hdHeight, false);
+  exportGl.setPixelRatio(hdPixelRatio);
+  exportGl.outputColorSpace = mainGl.outputColorSpace;
+  exportGl.toneMapping = mainGl.toneMapping;
+  exportGl.toneMappingExposure = mainGl.toneMappingExposure;
+  exportGl.shadowMap.enabled = true;
+  exportGl.shadowMap.type = mainGl.shadowMap.type;
 
-  gl.render(scene, camera);
+  const bgColor = new THREE.Color('#0a0a0f');
+  exportGl.setClearColor(bgColor, 1);
 
-  const sceneCanvas = gl.domElement;
+  const exportCamera = camera.clone() as THREE.PerspectiveCamera;
+  exportCamera.aspect = hdWidth / hdHeight;
+  exportCamera.updateProjectionMatrix();
+  exportCamera.position.copy(camera.position);
+  exportCamera.quaternion.copy(camera.quaternion);
 
-  gl.setSize(originalSize.x, originalSize.y);
-  gl.setPixelRatio(originalPixelRatio);
+  exportGl.render(scene, exportCamera);
 
-  (camera as THREE.PerspectiveCamera).aspect = originalSize.x / originalSize.y;
-  (camera as THREE.PerspectiveCamera).updateProjectionMatrix();
+  const configPanelHeightPx = Math.floor(CONFIG_PANEL_HEIGHT * (offscreenCanvas.width / 1920));
 
-  const totalWidth = sceneCanvas.width;
-  const totalHeight = sceneCanvas.height + CONFIG_PANEL_HEIGHT * (sceneCanvas.width / 1920);
+  const totalWidth = offscreenCanvas.width;
+  const totalHeight = offscreenCanvas.height + configPanelHeightPx;
 
   const exportCanvas = document.createElement('canvas');
   exportCanvas.width = totalWidth;
@@ -184,10 +198,11 @@ export async function exportSceneAsImage(
   ctx.fillStyle = '#0a0a0f';
   ctx.fillRect(0, 0, totalWidth, totalHeight);
 
-  ctx.drawImage(sceneCanvas, 0, 0, totalWidth, sceneCanvas.height);
+  ctx.drawImage(offscreenCanvas, 0, 0, offscreenCanvas.width, offscreenCanvas.height);
 
-  const panelHeight = totalHeight - sceneCanvas.height;
-  drawConfigPanel(ctx, totalWidth, sceneCanvas.height, panelHeight, state);
+  drawConfigPanel(ctx, totalWidth, offscreenCanvas.height, configPanelHeightPx, state);
+
+  exportGl.dispose();
 
   exportCanvas.toBlob(
     (blob) => {
