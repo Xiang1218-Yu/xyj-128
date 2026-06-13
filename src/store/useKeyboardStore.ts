@@ -20,6 +20,7 @@ export const useKeyboardStore = create<KeyboardStore>((set) => ({
   fontColor: DEFAULT_FONT_COLOR,
   selectedKeyId: null,
   selectedStickerId: null,
+  isDraggingSticker: false,
   keyCustoms: {},
 
   setLayout: (layout: LayoutType) => {
@@ -85,6 +86,10 @@ export const useKeyboardStore = create<KeyboardStore>((set) => ({
 
   setSelectedStickerId: (selectedStickerId: string | null) => {
     set({ selectedStickerId });
+  },
+
+  setIsDraggingSticker: (isDraggingSticker: boolean) => {
+    set({ isDraggingSticker });
   },
 
   setKeyLabel: (keyId: string, label: string) => {
@@ -187,6 +192,7 @@ export const useFontSize = () => useKeyboardStore((state) => state.fontSize);
 export const useFontColor = () => useKeyboardStore((state) => state.fontColor);
 export const useSelectedKeyId = () => useKeyboardStore((state) => state.selectedKeyId);
 export const useSelectedStickerId = () => useKeyboardStore((state) => state.selectedStickerId);
+export const useIsDraggingSticker = () => useKeyboardStore((state) => state.isDraggingSticker);
 export const useKeyCustom = (keyId: string) =>
   useKeyboardStore((state) => state.keyCustoms[keyId]);
 export const useKeyCustoms = () => useKeyboardStore((state) => state.keyCustoms);

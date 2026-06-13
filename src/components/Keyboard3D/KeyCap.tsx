@@ -47,6 +47,7 @@ export function KeyCap({ keyConfig, selectedZone, onKeySelect }: KeyCapProps) {
   const setSelectedKeyId = useKeyboardStore((state) => state.setSelectedKeyId);
   const setSelectedStickerId = useKeyboardStore((state) => state.setSelectedStickerId);
   const setKeyStickerPosition = useKeyboardStore((state) => state.setKeyStickerPosition);
+  const setIsDraggingSticker = useKeyboardStore((state) => state.setIsDraggingSticker);
 
   const pointerDownTimeRef = useRef<number>(0);
   const longPressTimerRef = useRef<number | null>(null);
@@ -196,6 +197,7 @@ export function KeyCap({ keyConfig, selectedZone, onKeySelect }: KeyCapProps) {
       size: new THREE.Vector2(keyConfig.width * 0.92, keyConfig.height * 0.92),
     };
 
+    setIsDraggingSticker(true);
     gl.domElement.style.cursor = 'grabbing';
 
     const onPointerMove = () => {
@@ -222,6 +224,7 @@ export function KeyCap({ keyConfig, selectedZone, onKeySelect }: KeyCapProps) {
 
     const onPointerUp = () => {
       activeStickerDragRef.current = null;
+      setIsDraggingSticker(false);
       gl.domElement.style.cursor = '';
       gl.domElement.removeEventListener('pointermove', onPointerMove);
       gl.domElement.removeEventListener('pointerup', onPointerUp);

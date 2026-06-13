@@ -99,6 +99,7 @@ export interface KeyboardState {
   fontColor: string;
   selectedKeyId: string | null;
   selectedStickerId: string | null;
+  isDraggingSticker: boolean;
   keyCustoms: Record<string, KeyCustom>;
 }
 
@@ -116,6 +117,7 @@ export interface KeyboardActions {
   setFontColor: (fontColor: string) => void;
   setSelectedKeyId: (keyId: string | null) => void;
   setSelectedStickerId: (stickerId: string | null) => void;
+  setIsDraggingSticker: (isDragging: boolean) => void;
   setKeyLabel: (keyId: string, label: string) => void;
   addKeySticker: (keyId: string, stickerType: StickerType) => void;
   removeKeySticker: (keyId: string, stickerId: string) => void;

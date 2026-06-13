@@ -21,7 +21,19 @@ export const useKeyboardPress = () => {
   );
 
   useEffect(() => {
+    const isInputFocused = () => {
+      const active = document.activeElement;
+      if (!active) return false;
+      const tag = active.tagName.toLowerCase();
+      return (
+        tag === 'input' ||
+        tag === 'textarea' ||
+        active.hasAttribute('contenteditable')
+      );
+    };
+
     const handleKeyDown = (e: KeyboardEvent) => {
+      if (isInputFocused()) return;
       const keyId = getKeyIdByCode(e.code);
       if (keyId) {
         e.preventDefault();
@@ -33,6 +45,7 @@ export const useKeyboardPress = () => {
     };
 
     const handleKeyUp = (e: KeyboardEvent) => {
+      if (isInputFocused()) return;
       const keyId = getKeyIdByCode(e.code);
       if (keyId) {
         e.preventDefault();

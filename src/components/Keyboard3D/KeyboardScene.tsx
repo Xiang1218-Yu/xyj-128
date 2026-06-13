@@ -5,7 +5,7 @@ import { EffectComposer, Bloom } from '@react-three/postprocessing';
 import { Lights } from './Lights';
 import { KeyboardCase } from './KeyboardCase';
 import { KeyCap } from './KeyCap';
-import { useLayout } from '@/store/useKeyboardStore';
+import { useLayout, useIsDraggingSticker } from '@/store/useKeyboardStore';
 import { LAYOUT_CONFIGS } from '@/data/layouts';
 import { KeyZone } from '@/types/keyboard';
 import * as THREE from 'three';
@@ -53,6 +53,8 @@ interface KeyboardSceneProps {
 }
 
 export function KeyboardScene({ selectedZone, onKeySelect }: KeyboardSceneProps) {
+  const isDraggingSticker = useIsDraggingSticker();
+
   return (
     <Canvas
       shadows
@@ -75,6 +77,7 @@ export function KeyboardScene({ selectedZone, onKeySelect }: KeyboardSceneProps)
         minPolarAngle={Math.PI / 8}
         enablePan={true}
         target={[0, 0, 0]}
+        enabled={!isDraggingSticker}
       />
       
       <EffectComposer>
