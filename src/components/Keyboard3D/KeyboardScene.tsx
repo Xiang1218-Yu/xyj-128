@@ -12,9 +12,10 @@ import * as THREE from 'three';
 
 interface KeyboardContentProps {
   selectedZone: KeyZone | null;
+  onKeySelect?: (keyId: string) => void;
 }
 
-function KeyboardContent({ selectedZone }: KeyboardContentProps) {
+function KeyboardContent({ selectedZone, onKeySelect }: KeyboardContentProps) {
   const layout = useLayout();
   const layoutConfig = LAYOUT_CONFIGS[layout];
   const groupRef = useRef<THREE.Group>(null);
@@ -31,9 +32,10 @@ function KeyboardContent({ selectedZone }: KeyboardContentProps) {
         key={keyConfig.id}
         keyConfig={keyConfig}
         selectedZone={selectedZone}
+        onKeySelect={onKeySelect}
       />
     ));
-  }, [layoutConfig.keys, selectedZone]);
+  }, [layoutConfig.keys, selectedZone, onKeySelect]);
 
   return (
     <group ref={groupRef}>
@@ -47,9 +49,10 @@ function KeyboardContent({ selectedZone }: KeyboardContentProps) {
 
 interface KeyboardSceneProps {
   selectedZone: KeyZone | null;
+  onKeySelect?: (keyId: string) => void;
 }
 
-export function KeyboardScene({ selectedZone }: KeyboardSceneProps) {
+export function KeyboardScene({ selectedZone, onKeySelect }: KeyboardSceneProps) {
   return (
     <Canvas
       shadows
@@ -61,7 +64,7 @@ export function KeyboardScene({ selectedZone }: KeyboardSceneProps) {
       <fog attach="fog" args={['#0a0a0f', 15, 35]} />
       
       <Lights />
-      <KeyboardContent selectedZone={selectedZone} />
+      <KeyboardContent selectedZone={selectedZone} onKeySelect={onKeySelect} />
       
       <OrbitControls
         enableDamping

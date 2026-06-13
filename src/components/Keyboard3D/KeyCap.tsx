@@ -3,16 +3,29 @@ import { useFrame } from '@react-three/fiber';
 import { RoundedBox, Text } from '@react-three/drei';
 import * as THREE from 'three';
 import { KeyConfig } from '@/types/keyboard';
-import { useKeyboardStore, useIsKeyPressed, useSwitchType, useSoundEnabled } from '@/store/useKeyboardStore';
+import {
+  useKeyboardStore,
+  useIsKeyPressed,
+  useSwitchType,
+  useSoundEnabled,
+  useFontStyle,
+  useFontSize,
+  useFontColor,
+  useSelectedKeyId,
+  useKeyCustom,
+} from '@/store/useKeyboardStore';
 import { useZoneColors } from '@/store/useKeyboardStore';
 import { playPressSound, playReleaseSound } from '@/utils/switchSound';
+import { FONT_FAMILY_MAP, FONT_CONFIGS } from '@/data/fonts';
+import { STICKER_CONFIGS } from '@/data/stickers';
 
 interface KeyCapProps {
   keyConfig: KeyConfig;
   selectedZone?: string | null;
+  onKeySelect?: (keyId: string) => void;
 }
 
-export function KeyCap({ keyConfig, selectedZone }: KeyCapProps) {
+export function KeyCap({ keyConfig, selectedZone, onKeySelect }: KeyCapProps) {
   const groupRef = useRef<THREE.Group>(null);
   const meshRef = useRef<THREE.Mesh>(null);
   const [hovered, setHovered] = useState(false);
@@ -20,11 +33,22 @@ export function KeyCap({ keyConfig, selectedZone }: KeyCapProps) {
   const zoneColors = useZoneColors();
   const switchType = useSwitchType();
   const soundEnabled = useSoundEnabled();
+  const fontStyle = useFontStyle();
+  const globalFontSize = useFontSize();
+  const fontColor = useFontColor();
+  const selectedKeyId = useSelectedKeyId();
+  const keyCustom = useKeyCustom(keyConfig.id);
   const pressKey = useKeyboardStore((state) => state.pressKey);
   const releaseKey = useKeyboardStore((state) => state.releaseKey);
+  const setSelectedKeyId = useKeyboardStore((state) => state.setSelectedKeyId);
 
   const color = zoneColors[keyConfig.zone];
-  const isSelected = selectedZone === keyConfig.zone;
+  const isZoneSelected = selectedZone === keyConfig.zone;
+  const isKeySelected = selectedKeyId === keyConfig.id;
+
+  const displayLabel = keyCustom?.label ?? keyConfig.label;
+  const sticker = keyCustom?.sticker;
+  const stickerConfig = sticker ? STICKER_CONFIGS[sticker] : null;
 
   const pressDepth = useMemo(() => (isPressed ? -0.18 : 0), [isPressed]);
   const targetScale = useMemo(() => (isPressed ? 0.985 : 1), [isPressed]);
@@ -77,10 +101,28 @@ export function KeyCap({ keyConfig, selectedZone }: KeyCapProps) {
     }
   };
 
-  const emissiveIntensity = hovered || isSelected ? 0.35 : isPressed ? 0.6 : 0.12;
-  const emissiveColor = isPressed ? '#ffffff' : hovered ? '#6366f1' : isSelected ? '#8b5cf6' : '#000000';
+  const handleClick = (e: any) => {
+    e.stopPropagation();
+    setSelectedKeyId(keyConfig.id);
+    onKeySelect?.(keyConfig.id);
+  };
 
-  const fontSize = keyConfig.width > 1.5 ? 0.28 : keyConfig.width > 1 ? 0.32 : 0.38;
+  const emissiveIntensity = hovered || isZoneSelected || isKeySelected ? 0.35 : isPressed ? 0.6 : 0.12;
+  const emissiveColor = isPressed
+    ? '#ffffff'
+    : isKeySelected
+    ? '#f59e0b'
+    : hovered
+    ? '#6366f1'
+    : isZoneSelected
+    ? '#8b5cf6'
+    : '#000000';
+
+  const baseFontSize = keyConfig.width > 1.5 ? 0.28 : keyConfig.width > 1 ? 0.32 : 0.38;
+  const fontSize = baseFontSize * (globalFontSize / 0.38);
+
+  const fontConfig = FONT_CONFIGS[fontStyle];
+  const fontFamily = FONT_FAMILY_MAP[fontStyle];
 
   return (
     <group position={[keyConfig.x + keyConfig.width / 2, 0, keyConfig.y + keyConfig.height / 2]}>
@@ -94,6 +136,7 @@ export function KeyCap({ keyConfig, selectedZone }: KeyCapProps) {
           onPointerUp={handlePointerUp}
           onPointerOut={handlePointerOut}
           onPointerOver={() => setHovered(true)}
+          onClick={handleClick}
           castShadow
           receiveShadow
         >
@@ -105,17 +148,30 @@ export function KeyCap({ keyConfig, selectedZone }: KeyCapProps) {
             emissiveIntensity={emissiveIntensity}
           />
         </RoundedBox>
-        
+
+        {stickerConfig && stickerConfig.id !== 'none' && (
+          <Text
+            position={[keyConfig.width * 0.35, 0.215, -keyConfig.height * 0.3]}
+            rotation={[-Math.PI / 2, 0, 0]}
+            fontSize={fontSize * 0.7}
+            anchorX="center"
+            anchorY="middle"
+          >
+            {stickerConfig.emoji}
+          </Text>
+        )}
+
         <Text
           position={[0, 0.21, 0]}
           rotation={[-Math.PI / 2, 0, 0]}
           fontSize={fontSize}
-          color="#1e293b"
+          color={fontColor}
           anchorX="center"
           anchorY="middle"
-          fontWeight={600}
+          fontWeight={fontConfig.fontWeight}
+          font={fontFamily}
         >
-          {keyConfig.label}
+          {displayLabel}
         </Text>
       </group>
     </group>
