@@ -1,4 +1,4 @@
-import { Keyboard, Info, Mouse, MousePointer2, Download, ChevronDown, ChevronUp, Gamepad2 } from 'lucide-react';
+import { Keyboard, Info, Mouse, MousePointer2, Download, ChevronDown, ChevronUp, Gamepad2, Grid3X3 } from 'lucide-react';
 import { useState } from 'react';
 import { LayoutSelector } from './LayoutSelector';
 import { MaterialSelector } from './MaterialSelector';
@@ -6,9 +6,10 @@ import { ZoneColorPicker } from './ZoneColorPicker';
 import { SwitchSelector } from './SwitchSelector';
 import { KeyCapEditor } from './KeyCapEditor';
 import { LightingControl } from './LightingControl';
+import { LayoutEditor } from './LayoutEditor';
 import { TypingGame } from '@/components/TypingGame/TypingGame';
 import { KeyZone } from '@/types/keyboard';
-import { useLayout } from '@/store/useKeyboardStore';
+import { useLayout, useLayoutEditMode } from '@/store/useKeyboardStore';
 import { LAYOUT_CONFIGS } from '@/data/layouts';
 
 interface ControlPanelProps {
@@ -22,6 +23,7 @@ export function ControlPanel({ selectedZone, onZoneChange, onExport, isExporting
   const [showTips, setShowTips] = useState(true);
   const [showTypingGame, setShowTypingGame] = useState(true);
   const layout = useLayout();
+  const layoutEditMode = useLayoutEditMode();
   const layoutConfig = LAYOUT_CONFIGS[layout];
 
   return (
@@ -71,6 +73,8 @@ export function ControlPanel({ selectedZone, onZoneChange, onExport, isExporting
         <div className="w-full h-px bg-gradient-to-r from-transparent via-gray-700/50 to-transparent" />
         <LayoutSelector />
         <div className="w-full h-px bg-gradient-to-r from-transparent via-gray-700/50 to-transparent" />
+        <LayoutEditor />
+        <div className="w-full h-px bg-gradient-to-r from-transparent via-gray-700/50 to-transparent" />
         <MaterialSelector />
         <div className="w-full h-px bg-gradient-to-r from-transparent via-gray-700/50 to-transparent" />
         <SwitchSelector />
@@ -119,6 +123,13 @@ export function ControlPanel({ selectedZone, onZoneChange, onExport, isExporting
               <div className="text-xs text-gray-400">
                 <div className="text-gray-300 mb-0.5">按键交互</div>
                 <div>点击 3D 按键或使用物理键盘体验按动效果</div>
+              </div>
+            </div>
+            <div className="flex items-start gap-2 px-3 py-2 bg-gray-800/30 rounded-lg">
+              <Grid3X3 className="w-4 h-4 text-emerald-400 mt-0.5 flex-shrink-0" />
+              <div className="text-xs text-gray-400">
+                <div className="text-gray-300 mb-0.5">自定义布局</div>
+                <div>进入编辑模式后拖动键帽移动位置，拖动右下角方块调整大小</div>
               </div>
             </div>
           </div>

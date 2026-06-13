@@ -22,6 +22,9 @@ import {
   useZoneRgbColors,
   usePressedKeys,
   useLayout,
+  useLayoutEditMode,
+  useIsDraggingKey,
+  useIsResizingKey,
 } from '@/store/useKeyboardStore';
 import { useCurrentHighlightKeyId, useIsTypingGameActive } from '@/store/useTypingGameStore';
 import { playPressSound, playReleaseSound } from '@/utils/switchSound';
@@ -87,6 +90,9 @@ export function KeyCap({ keyConfig, selectedZone, onKeySelect }: KeyCapProps) {
   const setSelectedStickerId = useKeyboardStore((state) => state.setSelectedStickerId);
   const setKeyStickerPosition = useKeyboardStore((state) => state.setKeyStickerPosition);
   const setIsDraggingSticker = useKeyboardStore((state) => state.setIsDraggingSticker);
+  const setKeyTransform = useKeyboardStore((state) => state.setKeyTransform);
+  const setIsDraggingKey = useKeyboardStore((state) => state.setIsDraggingKey);
+  const setIsResizingKey = useKeyboardStore((state) => state.setIsResizingKey);
 
   const rgbEnabled = useRgbEnabled();
   const lightingMode = useLightingMode();
@@ -96,6 +102,16 @@ export function KeyCap({ keyConfig, selectedZone, onKeySelect }: KeyCapProps) {
   const pressedKeys = usePressedKeys();
   const layout = useLayout();
   const layoutConfig = LAYOUT_CONFIGS[layout];
+
+  const layoutEditMode = useLayoutEditMode();
+  const isDraggingKey = useIsDraggingKey();
+  const isResizingKey = useIsResizingKey();
+
+  const customTransform = keyCustom?.transform;
+  const effectiveX = customTransform?.x ?? keyConfig.x;
+  const effectiveY = customTransform?.y ?? keyConfig.y;
+  const effectiveWidth = customTransform?.width ?? keyConfig.width;
+  const effectiveHeight = customTransform?.height ?? keyConfig.height;
 
   const pointerDownTimeRef = useRef<number>(0);
   const longPressTimerRef = useRef<number | null>(null);
@@ -108,6 +124,20 @@ export function KeyCap({ keyConfig, selectedZone, onKeySelect }: KeyCapProps) {
     keySize: THREE.Vector2;
   } | null>(null);
   const stickerGroupRefs = useRef<Record<string, THREE.Group | null>>({});
+  const activeKeyDragRef = useRef<{
+    plane: THREE.Plane;
+    keysGroup: THREE.Group;
+    startHitLocal: THREE.Vector3;
+    startX: number;
+    startY: number;
+  } | null>(null);
+  const activeKeyResizeRef = useRef<{
+    plane: THREE.Plane;
+    keysGroup: THREE.Group;
+    startHitLocal: THREE.Vector3;
+    startWidth: number;
+    startHeight: number;
+  } | null>(null);
 
   const { camera, gl, raycaster, pointer } = useThree();
 
@@ -119,8 +149,14 @@ export function KeyCap({ keyConfig, selectedZone, onKeySelect }: KeyCapProps) {
   const displayLabel = keyCustom?.label ?? keyConfig.label;
   const stickers: StickerInstance[] = keyCustom?.stickers ?? [];
 
-  const pressDepth = useMemo(() => (isPressed ? -0.18 : 0), [isPressed]);
-  const targetScale = useMemo(() => (isPressed ? 0.985 : 1), [isPressed]);
+  const pressDepth = useMemo(
+    () => (layoutEditMode ? 0 : isPressed ? -0.18 : 0),
+    [layoutEditMode, isPressed]
+  );
+  const targetScale = useMemo(
+    () => (layoutEditMode ? 1 : isPressed ? 0.985 : 1),
+    [layoutEditMode, isPressed]
+  );
 
   const totalWidth = layoutConfig.width;
   const totalHeight = layoutConfig.height;
@@ -143,7 +179,7 @@ export function KeyCap({ keyConfig, selectedZone, onKeySelect }: KeyCapProps) {
       }
 
       case 'wave': {
-        const keyCenterX = keyConfig.x + keyConfig.width / 2;
+        const keyCenterX = effectiveX + effectiveWidth / 2;
         const normalizedX = keyCenterX / totalWidth;
         const wave = Math.sin(normalizedX * Math.PI * 4 - t * 3) * 0.5 + 0.5;
         const hue = (normalizedX + t * 0.15) % 1;
@@ -152,8 +188,8 @@ export function KeyCap({ keyConfig, selectedZone, onKeySelect }: KeyCapProps) {
       }
 
       case 'rainbow': {
-        const keyCenterX = keyConfig.x + keyConfig.width / 2;
-        const keyCenterY = keyConfig.y + keyConfig.height / 2;
+        const keyCenterX = effectiveX + effectiveWidth / 2;
+        const keyCenterY = effectiveY + effectiveHeight / 2;
         const normalizedX = keyCenterX / totalWidth;
         const normalizedY = keyCenterY / totalHeight;
         const hue = (normalizedX * 0.6 + normalizedY * 0.2 + t * 0.2) % 1;
@@ -191,8 +227,8 @@ export function KeyCap({ keyConfig, selectedZone, onKeySelect }: KeyCapProps) {
         }
 
         let outColor = baseColor.clone().multiplyScalar(0.3);
-        const keyCenterX = keyConfig.x + keyConfig.width / 2;
-        const keyCenterY = keyConfig.y + keyConfig.height / 2;
+        const keyCenterX = effectiveX + effectiveWidth / 2;
+        const keyCenterY = effectiveY + effectiveHeight / 2;
 
         ripplesGlobal.forEach((ripple) => {
           const dx = keyCenterX - ripple.x;
@@ -329,6 +365,82 @@ export function KeyCap({ keyConfig, selectedZone, onKeySelect }: KeyCapProps) {
     pointerDownTimeRef.current = performance.now();
     longPressTriggeredRef.current = false;
 
+    if (layoutEditMode) {
+      setSelectedKeyId(keyConfig.id);
+      onKeySelect?.(keyConfig.id);
+
+      const keysGroup = groupRef.current?.parent as THREE.Group;
+      if (!keysGroup) return;
+
+      const planeNormal = new THREE.Vector3(0, 1, 0);
+      const planePoint = new THREE.Vector3(0, 0, 0);
+      planePoint.applyMatrix4(keysGroup.matrixWorld);
+      const plane = new THREE.Plane().setFromNormalAndCoplanarPoint(
+        planeNormal,
+        planePoint
+      );
+
+      const hitPoint = new THREE.Vector3();
+      raycaster.setFromCamera(pointer, camera);
+      if (!raycaster.ray.intersectPlane(plane, hitPoint)) return;
+
+      const invKeysGroup = new THREE.Matrix4().copy(keysGroup.matrixWorld).invert();
+      const hitLocal = hitPoint.clone().applyMatrix4(invKeysGroup);
+
+      activeKeyDragRef.current = {
+        plane,
+        keysGroup,
+        startHitLocal: hitLocal.clone(),
+        startX: effectiveX,
+        startY: effectiveY,
+      };
+
+      setIsDraggingKey(true);
+      gl.domElement.style.cursor = 'grabbing';
+
+      const onPointerMove = () => {
+        const drag = activeKeyDragRef.current;
+        if (!drag) return;
+
+        const hit = new THREE.Vector3();
+        raycaster.setFromCamera(pointer, camera);
+        if (!raycaster.ray.intersectPlane(drag.plane, hit)) return;
+
+        const inv = new THREE.Matrix4().copy(drag.keysGroup.matrixWorld).invert();
+        const localHit = hit.clone().applyMatrix4(inv);
+
+        const startCenterX = drag.startX + effectiveWidth / 2;
+        const startCenterZ = drag.startY + effectiveHeight / 2;
+        const deltaX = localHit.x - drag.startHitLocal.x;
+        const deltaZ = localHit.z - drag.startHitLocal.z;
+
+        const newCenterX = startCenterX + deltaX;
+        const newCenterZ = startCenterZ + deltaZ;
+
+        const newX = newCenterX - effectiveWidth / 2;
+        const newY = newCenterZ - effectiveHeight / 2;
+
+        setKeyTransform(keyConfig.id, {
+          x: Math.max(-1, Math.min(layoutConfig.width + 1, newX)),
+          y: Math.max(-1, Math.min(layoutConfig.height + 1, newY)),
+        });
+      };
+
+      const onPointerUp = () => {
+        activeKeyDragRef.current = null;
+        setIsDraggingKey(false);
+        gl.domElement.style.cursor = '';
+        gl.domElement.removeEventListener('pointermove', onPointerMove);
+        gl.domElement.removeEventListener('pointerup', onPointerUp);
+        gl.domElement.removeEventListener('pointercancel', onPointerUp);
+      };
+
+      gl.domElement.addEventListener('pointermove', onPointerMove);
+      gl.domElement.addEventListener('pointerup', onPointerUp);
+      gl.domElement.addEventListener('pointercancel', onPointerUp);
+      return;
+    }
+
     longPressTimerRef.current = window.setTimeout(() => {
       longPressTriggeredRef.current = true;
       triggerPress();
@@ -342,6 +454,8 @@ export function KeyCap({ keyConfig, selectedZone, onKeySelect }: KeyCapProps) {
       window.clearTimeout(longPressTimerRef.current);
       longPressTimerRef.current = null;
     }
+
+    if (layoutEditMode) return;
 
     if (longPressTriggeredRef.current) {
       triggerRelease();
@@ -362,6 +476,80 @@ export function KeyCap({ keyConfig, selectedZone, onKeySelect }: KeyCapProps) {
       triggerRelease();
       longPressTriggeredRef.current = false;
     }
+  };
+
+  const handleResizePointerDown = (e: any) => {
+    e.stopPropagation();
+
+    const keysGroup = groupRef.current?.parent as THREE.Group;
+    if (!keysGroup) return;
+
+    const planeNormal = new THREE.Vector3(0, 1, 0);
+    const planePoint = new THREE.Vector3(0, 0.35, 0);
+    planePoint.applyMatrix4(keysGroup.matrixWorld);
+    const plane = new THREE.Plane().setFromNormalAndCoplanarPoint(
+      planeNormal,
+      planePoint
+    );
+
+    const hitPoint = new THREE.Vector3();
+    raycaster.setFromCamera(pointer, camera);
+    if (!raycaster.ray.intersectPlane(plane, hitPoint)) return;
+
+    const invKeysGroup = new THREE.Matrix4().copy(keysGroup.matrixWorld).invert();
+    const hitLocal = hitPoint.clone().applyMatrix4(invKeysGroup);
+
+    activeKeyResizeRef.current = {
+      plane,
+      keysGroup,
+      startHitLocal: hitLocal.clone(),
+      startWidth: effectiveWidth,
+      startHeight: effectiveHeight,
+    };
+
+    setIsResizingKey(true);
+    gl.domElement.style.cursor = 'nwse-resize';
+
+    const onPointerMove = () => {
+      const drag = activeKeyResizeRef.current;
+      if (!drag) return;
+
+      const hit = new THREE.Vector3();
+      raycaster.setFromCamera(pointer, camera);
+      if (!raycaster.ray.intersectPlane(drag.plane, hit)) return;
+
+      const inv = new THREE.Matrix4().copy(drag.keysGroup.matrixWorld).invert();
+      const localHit = hit.clone().applyMatrix4(inv);
+
+      const startRightEdgeX = effectiveX + drag.startWidth;
+      const startBottomEdgeZ = effectiveY + drag.startHeight;
+      const deltaX = localHit.x - drag.startHitLocal.x;
+      const deltaZ = localHit.z - drag.startHitLocal.z;
+
+      const newRightEdgeX = startRightEdgeX + deltaX;
+      const newBottomEdgeZ = startBottomEdgeZ + deltaZ;
+
+      const newWidth = Math.max(0.5, Math.min(20, newRightEdgeX - effectiveX));
+      const newHeight = Math.max(0.5, Math.min(20, newBottomEdgeZ - effectiveY));
+
+      setKeyTransform(keyConfig.id, {
+        width: newWidth,
+        height: newHeight,
+      });
+    };
+
+    const onPointerUp = () => {
+      activeKeyResizeRef.current = null;
+      setIsResizingKey(false);
+      gl.domElement.style.cursor = '';
+      gl.domElement.removeEventListener('pointermove', onPointerMove);
+      gl.domElement.removeEventListener('pointerup', onPointerUp);
+      gl.domElement.removeEventListener('pointercancel', onPointerUp);
+    };
+
+    gl.domElement.addEventListener('pointermove', onPointerMove);
+    gl.domElement.addEventListener('pointerup', onPointerUp);
+    gl.domElement.addEventListener('pointercancel', onPointerUp);
   };
 
   const handleStickerPointerDown = (
@@ -487,20 +675,22 @@ export function KeyCap({ keyConfig, selectedZone, onKeySelect }: KeyCapProps) {
     ? rgbIntensityRef.current
     : interactionEmissiveIntensity;
 
-  const baseFontSize = keyConfig.width > 1.5 ? 0.28 : keyConfig.width > 1 ? 0.32 : 0.38;
+  const baseFontSize = effectiveWidth > 1.5 ? 0.28 : effectiveWidth > 1 ? 0.32 : 0.38;
   const fontSize = baseFontSize * (globalFontSize / 0.38);
 
   const fontConfig = FONT_CONFIGS[fontStyle];
 
+  const resizeHandleSize = 0.15;
+
   return (
-    <group position={[keyConfig.x + keyConfig.width / 2, 0, keyConfig.y + keyConfig.height / 2]}>
+    <group position={[effectiveX + effectiveWidth / 2, 0, effectiveY + effectiveHeight / 2]}>
       {(rgbEnabled || isHighlighted) && (
         <mesh
           ref={backlightRef}
           position={[0, -0.05, 0]}
           rotation={[-Math.PI / 2, 0, 0]}
         >
-          <planeGeometry args={[keyConfig.width * 1.0, keyConfig.height * 1.0]} />
+          <planeGeometry args={[effectiveWidth * 1.0, effectiveHeight * 1.0]} />
           <meshBasicMaterial
             color={zoneRgbColors[keyConfig.zone]}
             transparent
@@ -512,7 +702,7 @@ export function KeyCap({ keyConfig, selectedZone, onKeySelect }: KeyCapProps) {
       <group ref={groupRef}>
         <RoundedBox
           ref={meshRef}
-          args={[keyConfig.width * 0.92, 0.4, keyConfig.height * 0.92]}
+          args={[effectiveWidth * 0.92, 0.4, effectiveHeight * 0.92]}
           radius={0.08}
           smoothness={4}
           onPointerDown={handlePointerDownKey}
@@ -531,11 +721,53 @@ export function KeyCap({ keyConfig, selectedZone, onKeySelect }: KeyCapProps) {
           />
         </RoundedBox>
 
+        {layoutEditMode && isKeySelected && (
+          <>
+            <lineSegments>
+              <edgesGeometry
+                attach="geometry"
+                args={[
+                  new THREE.BoxGeometry(
+                    effectiveWidth * 0.92 + 0.1,
+                    0.42,
+                    effectiveHeight * 0.92 + 0.1
+                  ),
+                ]}
+              />
+              <lineBasicMaterial attach="material" color="#22d3ee" linewidth={2} />
+            </lineSegments>
+
+            <mesh
+              position={[
+                (effectiveWidth * 0.92) / 2,
+                0.25,
+                (effectiveHeight * 0.92) / 2,
+              ]}
+              onPointerDown={handleResizePointerDown}
+              onPointerOver={(e: any) => {
+                e.stopPropagation();
+                gl.domElement.style.cursor = 'nwse-resize';
+              }}
+              onPointerOut={(e: any) => {
+                e.stopPropagation();
+                if (!isResizingKey) gl.domElement.style.cursor = '';
+              }}
+            >
+              <boxGeometry args={[resizeHandleSize, 0.1, resizeHandleSize]} />
+              <meshStandardMaterial
+                color="#22d3ee"
+                emissive="#22d3ee"
+                emissiveIntensity={0.5}
+              />
+            </mesh>
+          </>
+        )}
+
         {stickers.map((sticker) => {
           const config = STICKER_CONFIGS[sticker.type];
           const isStickerSelected = selectedStickerId === sticker.id;
-          const stickerX = sticker.x * keyConfig.width * 0.92;
-          const stickerZ = sticker.y * keyConfig.height * 0.92;
+          const stickerX = sticker.x * effectiveWidth * 0.92;
+          const stickerZ = sticker.y * effectiveHeight * 0.92;
 
           return (
             <group

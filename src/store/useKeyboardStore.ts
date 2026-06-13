@@ -1,15 +1,28 @@
 import { create } from 'zustand';
-import { KeyboardState, KeyboardActions, LayoutType, CaseMaterial, KeyZone, SwitchType, FontStyle, StickerType, LightingMode } from '@/types/keyboard';
+import { KeyboardState, KeyboardActions, LayoutType, CaseMaterial, KeyZone, SwitchType, FontStyle, StickerType, LightingMode, KeyTransform, LayoutConfig } from '@/types/keyboard';
 import { DEFAULT_ZONE_COLORS } from '@/data/zones';
 import { DEFAULT_FONT_SIZE, DEFAULT_FONT_COLOR } from '@/data/fonts';
 import { DEFAULT_RGB_COLORS, DEFAULT_RGB_BRIGHTNESS, DEFAULT_RGB_SPEED } from '@/data/lighting';
+import { LAYOUT_CONFIGS } from '@/data/layouts';
 
 interface KeyboardStore extends KeyboardState, KeyboardActions {}
 
 let stickerIdCounter = 0;
 const genStickerId = () => `sticker_${Date.now()}_${++stickerIdCounter}`;
 
-export const useKeyboardStore = create<KeyboardStore>((set) => ({
+const CUSTOM_LAYOUTS_STORAGE_KEY = 'keyboard_custom_layouts';
+const CUSTOM_TRANSFORMS_STORAGE_KEY = 'keyboard_custom_transforms';
+
+const loadSavedLayouts = (): Record<string, LayoutConfig> => {
+  try {
+    const raw = localStorage.getItem(CUSTOM_LAYOUTS_STORAGE_KEY);
+    return raw ? JSON.parse(raw) : {};
+  } catch {
+    return {};
+  }
+};
+
+export const useKeyboardStore = create<KeyboardStore>((set, get) => ({
   layout: '65%',
   caseMaterial: 'aluminum',
   switchType: 'red',
@@ -28,6 +41,10 @@ export const useKeyboardStore = create<KeyboardStore>((set) => ({
   rgbBrightness: DEFAULT_RGB_BRIGHTNESS,
   rgbSpeed: DEFAULT_RGB_SPEED,
   zoneRgbColors: { ...DEFAULT_RGB_COLORS },
+  layoutEditMode: false,
+  isDraggingKey: false,
+  isResizingKey: false,
+  savedCustomLayouts: loadSavedLayouts(),
 
   setLayout: (layout: LayoutType) => {
     set({ layout });
@@ -212,6 +229,135 @@ export const useKeyboardStore = create<KeyboardStore>((set) => ({
   resetRgbColors: () => {
     set({ zoneRgbColors: { ...DEFAULT_RGB_COLORS } });
   },
+
+  setLayoutEditMode: (layoutEditMode: boolean) => {
+    set({ layoutEditMode });
+  },
+
+  setIsDraggingKey: (isDraggingKey: boolean) => {
+    set({ isDraggingKey });
+  },
+
+  setIsResizingKey: (isResizingKey: boolean) => {
+    set({ isResizingKey });
+  },
+
+  setKeyTransform: (keyId: string, transform: Partial<KeyTransform>) => {
+    set((state) => {
+      const existing = state.keyCustoms[keyId];
+      const existingTransform = existing?.transform ?? {};
+      const mergedTransform = { ...existingTransform, ...transform };
+      const hasChanges = Object.keys(mergedTransform).some(
+        (k) => mergedTransform[k as keyof KeyTransform] !== undefined
+      );
+      return {
+        keyCustoms: {
+          ...state.keyCustoms,
+          [keyId]: {
+            ...existing,
+            transform: hasChanges ? mergedTransform : undefined,
+          },
+        },
+      };
+    });
+  },
+
+  resetKeyTransform: (keyId: string) => {
+    set((state) => {
+      const existing = state.keyCustoms[keyId];
+      if (!existing) return {};
+      const { transform, ...rest } = existing;
+      const newKeyCustoms = { ...state.keyCustoms };
+      if (Object.keys(rest).length > 0) {
+        newKeyCustoms[keyId] = rest;
+      } else {
+        delete newKeyCustoms[keyId];
+      }
+      return { keyCustoms: newKeyCustoms };
+    });
+  },
+
+  resetAllKeyTransforms: () => {
+    set((state) => {
+      const newKeyCustoms: typeof state.keyCustoms = {};
+      Object.entries(state.keyCustoms).forEach(([keyId, custom]) => {
+        const { transform, ...rest } = custom;
+        if (Object.keys(rest).length > 0) {
+          newKeyCustoms[keyId] = rest;
+        }
+      });
+      return { keyCustoms: newKeyCustoms };
+    });
+  },
+
+  saveCustomLayout: (name: string) => {
+    const state = get();
+    const baseLayout = LAYOUT_CONFIGS[state.layout];
+    const customKeys = baseLayout.keys.map((k) => {
+      const custom = state.keyCustoms[k.id];
+      if (custom?.transform) {
+        return {
+          ...k,
+          x: custom.transform.x ?? k.x,
+          y: custom.transform.y ?? k.y,
+          width: custom.transform.width ?? k.width,
+          height: custom.transform.height ?? k.height,
+        };
+      }
+      return { ...k };
+    });
+    const newLayout: LayoutConfig = {
+      type: baseLayout.type,
+      name,
+      description: `自定义布局 (${baseLayout.name})`,
+      keys: customKeys,
+      width: baseLayout.width,
+      height: baseLayout.height,
+    };
+    const newSaved = { ...state.savedCustomLayouts, [name]: newLayout };
+    try {
+      localStorage.setItem(CUSTOM_LAYOUTS_STORAGE_KEY, JSON.stringify(newSaved));
+    } catch {
+      // ignore
+    }
+    set({ savedCustomLayouts: newSaved });
+  },
+
+  loadCustomLayout: (name: string) => {
+    const state = get();
+    const saved = state.savedCustomLayouts[name];
+    if (!saved) return;
+    set((currentState) => {
+      const newKeyCustoms = { ...currentState.keyCustoms };
+      saved.keys.forEach((k) => {
+        const baseKey = LAYOUT_CONFIGS[saved.type].keys.find((bk) => bk.id === k.id);
+        if (!baseKey) return;
+        const existing = newKeyCustoms[k.id] ?? {};
+        const transform: KeyTransform = {};
+        if (k.x !== baseKey.x) transform.x = k.x;
+        if (k.y !== baseKey.y) transform.y = k.y;
+        if (k.width !== baseKey.width) transform.width = k.width;
+        if (k.height !== baseKey.height) transform.height = k.height;
+        if (Object.keys(transform).length > 0) {
+          newKeyCustoms[k.id] = { ...existing, transform };
+        }
+      });
+      return { keyCustoms: newKeyCustoms };
+    });
+  },
+
+  deleteCustomLayout: (name: string) => {
+    set((state) => {
+      const newSaved = { ...state.savedCustomLayouts };
+      delete newSaved[name];
+      try {
+        localStorage.setItem(CUSTOM_LAYOUTS_STORAGE_KEY, JSON.stringify(newSaved));
+      } catch {
+        // ignore
+      }
+      return { savedCustomLayouts: newSaved };
+    });
+  },
 }));
 
 export const useLayout = () => useKeyboardStore((state) => state.layout);
@@ -236,3 +382,21 @@ export const useLightingMode = () => useKeyboardStore((state) => state.lightingM
 export const useRgbBrightness = () => useKeyboardStore((state) => state.rgbBrightness);
 export const useRgbSpeed = () => useKeyboardStore((state) => state.rgbSpeed);
 export const useZoneRgbColors = () => useKeyboardStore((state) => state.zoneRgbColors);
+export const useLayoutEditMode = () => useKeyboardStore((state) => state.layoutEditMode);
+export const useIsDraggingKey = () => useKeyboardStore((state) => state.isDraggingKey);
+export const useIsResizingKey = () => useKeyboardStore((state) => state.isResizingKey);
+export const useSavedCustomLayouts = () => useKeyboardStore((state) => state.savedCustomLayouts);
+export const useKeyTransform = (keyId: string) =>
+  useKeyboardStore((state) => state.keyCustoms[keyId]?.transform);
+
+export const getEffectiveKeyConfig = (keyConfig: any, keyCustoms: Record<string, any>) => {
+  const custom = keyCustoms[keyConfig.id];
+  if (!custom?.transform) return keyConfig;
+  return {
+    ...keyConfig,
+    x: custom.transform.x ?? keyConfig.x,
+    y: custom.transform.y ?? keyConfig.y,
+    width: custom.transform.width ?? keyConfig.width,
+    height: custom.transform.height ?? keyConfig.height,
+  };
+};

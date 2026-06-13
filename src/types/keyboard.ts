@@ -82,9 +82,17 @@ export interface StickerInstance {
   y: number;
 }
 
+export interface KeyTransform {
+  x?: number;
+  y?: number;
+  width?: number;
+  height?: number;
+}
+
 export interface KeyCustom {
   label?: string;
   stickers?: StickerInstance[];
+  transform?: KeyTransform;
 }
 
 export type LightingMode =
@@ -128,6 +136,10 @@ export interface KeyboardState {
   rgbBrightness: number;
   rgbSpeed: number;
   zoneRgbColors: Record<KeyZone, string>;
+  layoutEditMode: boolean;
+  isDraggingKey: boolean;
+  isResizingKey: boolean;
+  savedCustomLayouts: Record<string, LayoutConfig>;
 }
 
 export interface KeyboardActions {
@@ -157,4 +169,13 @@ export interface KeyboardActions {
   setRgbSpeed: (speed: number) => void;
   setZoneRgbColor: (zone: KeyZone, color: string) => void;
   resetRgbColors: () => void;
+  setLayoutEditMode: (enabled: boolean) => void;
+  setIsDraggingKey: (isDragging: boolean) => void;
+  setIsResizingKey: (isResizing: boolean) => void;
+  setKeyTransform: (keyId: string, transform: Partial<KeyTransform>) => void;
+  resetKeyTransform: (keyId: string) => void;
+  resetAllKeyTransforms: () => void;
+  saveCustomLayout: (name: string) => void;
+  loadCustomLayout: (name: string) => void;
+  deleteCustomLayout: (name: string) => void;
 }

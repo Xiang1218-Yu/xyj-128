@@ -5,7 +5,7 @@ import { EffectComposer, Bloom } from '@react-three/postprocessing';
 import { Lights } from './Lights';
 import { KeyboardCase } from './KeyboardCase';
 import { KeyCap } from './KeyCap';
-import { useLayout, useIsDraggingSticker } from '@/store/useKeyboardStore';
+import { useLayout, useIsDraggingSticker, useLayoutEditMode, useIsDraggingKey, useIsResizingKey } from '@/store/useKeyboardStore';
 import { LAYOUT_CONFIGS } from '@/data/layouts';
 import { KeyZone } from '@/types/keyboard';
 import * as THREE from 'three';
@@ -77,6 +77,11 @@ interface KeyboardSceneProps {
 
 export function KeyboardScene({ selectedZone, onKeySelect, sceneRefs }: KeyboardSceneProps) {
   const isDraggingSticker = useIsDraggingSticker();
+  const layoutEditMode = useLayoutEditMode();
+  const isDraggingKey = useIsDraggingKey();
+  const isResizingKey = useIsResizingKey();
+
+  const orbitDisabled = isDraggingSticker || layoutEditMode || isDraggingKey || isResizingKey;
 
   const defaultGlRef = useRef<THREE.WebGLRenderer | null>(null);
   const defaultSceneRef = useRef<THREE.Scene | null>(null);
@@ -109,7 +114,7 @@ export function KeyboardScene({ selectedZone, onKeySelect, sceneRefs }: Keyboard
         minPolarAngle={Math.PI / 8}
         enablePan={true}
         target={[0, 0, 0]}
-        enabled={!isDraggingSticker}
+        enabled={!orbitDisabled}
       />
       
       <EffectComposer>
