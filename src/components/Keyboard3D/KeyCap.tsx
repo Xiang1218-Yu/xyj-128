@@ -16,7 +16,7 @@ import {
 } from '@/store/useKeyboardStore';
 import { useZoneColors } from '@/store/useKeyboardStore';
 import { playPressSound, playReleaseSound } from '@/utils/switchSound';
-import { FONT_FAMILY_MAP, FONT_CONFIGS } from '@/data/fonts';
+import { FONT_CONFIGS } from '@/data/fonts';
 import { STICKER_CONFIGS } from '@/data/stickers';
 
 interface KeyCapProps {
@@ -122,7 +122,6 @@ export function KeyCap({ keyConfig, selectedZone, onKeySelect }: KeyCapProps) {
   const fontSize = baseFontSize * (globalFontSize / 0.38);
 
   const fontConfig = FONT_CONFIGS[fontStyle];
-  const fontFamily = FONT_FAMILY_MAP[fontStyle];
 
   return (
     <group position={[keyConfig.x + keyConfig.width / 2, 0, keyConfig.y + keyConfig.height / 2]}>
@@ -169,7 +168,6 @@ export function KeyCap({ keyConfig, selectedZone, onKeySelect }: KeyCapProps) {
           anchorX="center"
           anchorY="middle"
           fontWeight={fontConfig.fontWeight}
-          font={fontFamily}
         >
           {displayLabel}
         </Text>
