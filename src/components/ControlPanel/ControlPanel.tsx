@@ -4,6 +4,7 @@ import { LayoutSelector } from './LayoutSelector';
 import { MaterialSelector } from './MaterialSelector';
 import { ZoneColorPicker } from './ZoneColorPicker';
 import { SwitchSelector } from './SwitchSelector';
+import { SwitchCurveVisualizer } from './SwitchCurveVisualizer';
 import { KeyCapEditor } from './KeyCapEditor';
 import { LightingControl } from './LightingControl';
 import { LayoutEditor } from './LayoutEditor';
@@ -79,6 +80,8 @@ export function ControlPanel({ selectedZone, onZoneChange, onExport, isExporting
         <MaterialSelector />
         <div className="w-full h-px bg-gradient-to-r from-transparent via-gray-700/50 to-transparent" />
         <SwitchSelector />
+        <div className="w-full h-px bg-gradient-to-r from-transparent via-gray-700/50 to-transparent" />
+        <SwitchCurveVisualizer />
         <div className="w-full h-px bg-gradient-to-r from-transparent via-gray-700/50 to-transparent" />
         <ColorSchemeMarket />
         <div className="w-full h-px bg-gradient-to-r from-transparent via-gray-700/50 to-transparent" />

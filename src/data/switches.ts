@@ -1,4 +1,67 @@
-import { SwitchConfig, SwitchType } from '@/types/keyboard';
+import { SwitchConfig, SwitchType, SwitchPhysicsParams } from '@/types/keyboard';
+
+const DEFAULT_PHYSICS: Record<SwitchType, SwitchPhysicsParams> = {
+  red: {
+    totalTravel: 4.0,
+    actuationTravel: 2.0,
+    actuationForce: 45,
+    tactileForce: 0,
+    tactileTravel: 0,
+    bottomOutForce: 60,
+    returnSpeed: 18,
+    damping: 14,
+  },
+  blue: {
+    totalTravel: 4.0,
+    actuationTravel: 2.2,
+    actuationForce: 50,
+    tactileForce: 60,
+    tactileTravel: 1.5,
+    bottomOutForce: 70,
+    returnSpeed: 16,
+    damping: 12,
+  },
+  brown: {
+    totalTravel: 4.0,
+    actuationTravel: 2.0,
+    actuationForce: 45,
+    tactileForce: 55,
+    tactileTravel: 1.2,
+    bottomOutForce: 65,
+    returnSpeed: 17,
+    damping: 13,
+  },
+  black: {
+    totalTravel: 4.0,
+    actuationTravel: 2.0,
+    actuationForce: 60,
+    tactileForce: 0,
+    tactileTravel: 0,
+    bottomOutForce: 80,
+    returnSpeed: 15,
+    damping: 12,
+  },
+  silver: {
+    totalTravel: 3.4,
+    actuationTravel: 1.2,
+    actuationForce: 45,
+    tactileForce: 0,
+    tactileTravel: 0,
+    bottomOutForce: 60,
+    returnSpeed: 22,
+    damping: 16,
+  },
+  green: {
+    totalTravel: 4.0,
+    actuationTravel: 2.2,
+    actuationForce: 70,
+    tactileForce: 80,
+    tactileTravel: 1.5,
+    bottomOutForce: 90,
+    returnSpeed: 14,
+    damping: 11,
+  },
+};
 
 export const SWITCH_CONFIGS: Record<SwitchType, SwitchConfig> = {
   red: {
@@ -7,6 +70,7 @@ export const SWITCH_CONFIGS: Record<SwitchType, SwitchConfig> = {
     description: '线性无声，触发轻盈顺滑',
     category: 'linear',
     color: '#ef4444',
+    physics: DEFAULT_PHYSICS.red,
   },
   blue: {
     id: 'blue',
@@ -14,6 +78,7 @@ export const SWITCH_CONFIGS: Record<SwitchType, SwitchConfig> = {
     description: '段落清脆，经典咔哒声',
     category: 'clicky',
     color: '#3b82f6',
+    physics: DEFAULT_PHYSICS.blue,
   },
   brown: {
     id: 'brown',
@@ -21,6 +86,7 @@ export const SWITCH_CONFIGS: Record<SwitchType, SwitchConfig> = {
     description: '微段落感，柔和安静',
     category: 'tactile',
     color: '#a16207',
+    physics: DEFAULT_PHYSICS.brown,
   },
   black: {
     id: 'black',
@@ -28,6 +94,7 @@ export const SWITCH_CONFIGS: Record<SwitchType, SwitchConfig> = {
     description: '线性无声，触发力度重',
     category: 'linear',
     color: '#1e293b',
+    physics: DEFAULT_PHYSICS.black,
   },
   silver: {
     id: 'silver',
@@ -35,6 +102,7 @@ export const SWITCH_CONFIGS: Record<SwitchType, SwitchConfig> = {
     description: '线性无声，短触发快速响应',
     category: 'linear',
     color: '#94a3b8',
+    physics: DEFAULT_PHYSICS.silver,
   },
   green: {
     id: 'green',
@@ -42,6 +110,7 @@ export const SWITCH_CONFIGS: Record<SwitchType, SwitchConfig> = {
     description: '段落清脆，重力度咔哒声',
     category: 'clicky',
     color: '#22c55e',
+    physics: DEFAULT_PHYSICS.green,
   },
 };
 

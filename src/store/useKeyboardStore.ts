@@ -1,9 +1,10 @@
 import { create } from 'zustand';
-import { KeyboardState, KeyboardActions, LayoutType, CaseMaterial, KeyZone, SwitchType, FontStyle, StickerType, LightingMode, KeyTransform, LayoutConfig, SnapGridSize, ColorScheme } from '@/types/keyboard';
+import { KeyboardState, KeyboardActions, LayoutType, CaseMaterial, KeyZone, SwitchType, FontStyle, StickerType, LightingMode, KeyTransform, LayoutConfig, SnapGridSize, ColorScheme, SwitchPhysicsParams } from '@/types/keyboard';
 import { DEFAULT_ZONE_COLORS } from '@/data/zones';
 import { DEFAULT_FONT_SIZE, DEFAULT_FONT_COLOR } from '@/data/fonts';
 import { DEFAULT_RGB_COLORS, DEFAULT_RGB_BRIGHTNESS, DEFAULT_RGB_SPEED } from '@/data/lighting';
 import { LAYOUT_CONFIGS } from '@/data/layouts';
+import { SWITCH_CONFIGS } from '@/data/switches';
 import { checkCollisionWithOthers, snapTransformToGrid, findNonCollidingPosition, clampToBounds } from '@/utils/layoutUtils';
 import { COLOR_SCHEMES } from '@/data/colorSchemes';
 
@@ -73,6 +74,10 @@ export const useKeyboardStore = create<KeyboardStore>((set, get) => ({
   favoriteSchemeIds: loadFavoriteSchemes(),
   customSchemes: loadCustomSchemes(),
   activeSchemeId: null,
+  customSwitchPhysics: {},
+  useCustomSwitchPhysics: false,
+  curveAnimationProgress: 0,
+  isCurveAnimating: false,
 
   setLayout: (layout: LayoutType) => {
     set({ layout });
@@ -545,6 +550,31 @@ export const useKeyboardStore = create<KeyboardStore>((set, get) => ({
   setActiveSchemeId: (schemeId: string | null) => {
     set({ activeSchemeId: schemeId });
   },
+
+  setCustomSwitchPhysics: (params: Partial<SwitchPhysicsParams>) => {
+    set((state) => ({
+      customSwitchPhysics: {
+        ...state.customSwitchPhysics,
+        ...params,
+      },
+    }));
+  },
+
+  setUseCustomSwitchPhysics: (enabled: boolean) => {
+    set({ useCustomSwitchPhysics: enabled });
+  },
+
+  resetCustomSwitchPhysics: () => {
+    set({ customSwitchPhysics: {}, useCustomSwitchPhysics: false });
+  },
+
+  setCurveAnimationProgress: (progress: number) => {
+    set({ curveAnimationProgress: Math.max(0, Math.min(1, progress)) });
+  },
+
+  setIsCurveAnimating: (animating: boolean) => {
+    set({ isCurveAnimating: animating });
+  },
 }));
 
 export const useLayout = () => useKeyboardStore((state) => state.layout);
@@ -599,4 +629,30 @@ export const useIsSchemeFavorited = (schemeId: string) =>
 export const useAllSchemes = () => {
   const customSchemes = useKeyboardStore((state) => state.customSchemes);
   return { COLOR_SCHEMES, customSchemes };
+};
+
+export const useCustomSwitchPhysics = () =>
+  useKeyboardStore((state) => state.customSwitchPhysics);
+export const useUseCustomSwitchPhysics = () =>
+  useKeyboardStore((state) => state.useCustomSwitchPhysics);
+export const useCurveAnimationProgress = () =>
+  useKeyboardStore((state) => state.curveAnimationProgress);
+export const useIsCurveAnimating = () =>
+  useKeyboardStore((state) => state.isCurveAnimating);
+
+export const useSwitchPhysics = (): SwitchPhysicsParams => {
+  const switchType = useKeyboardStore((state) => state.switchType);
+  const customPhysics = useKeyboardStore((state) => state.customSwitchPhysics);
+  const useCustom = useKeyboardStore((state) => state.useCustomSwitchPhysics);
+
+  const basePhysics = SWITCH_CONFIGS[switchType].physics;
+
+  if (useCustom) {
+    return {
+      ...basePhysics,
+      ...customPhysics,
+    };
+  }
+
+  return basePhysics;
 };

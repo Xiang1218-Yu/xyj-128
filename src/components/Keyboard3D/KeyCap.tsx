@@ -27,7 +27,9 @@ import {
   useIsResizingKey,
   useSnapToGrid,
   useCollisionDetection,
+  useSwitchPhysics,
 } from '@/store/useKeyboardStore';
+import { calculatePressDepth, calculateAnimationSpeed } from '@/utils/switchCurve';
 import { useCurrentHighlightKeyId, useIsTypingGameActive } from '@/store/useTypingGameStore';
 import { playPressSound, playReleaseSound } from '@/utils/switchSound';
 import { FONT_CONFIGS } from '@/data/fonts';
@@ -105,6 +107,7 @@ export function KeyCap({ keyConfig, selectedZone, onKeySelect }: KeyCapProps) {
   const pressedKeys = usePressedKeys();
   const layout = useLayout();
   const layoutConfig = LAYOUT_CONFIGS[layout];
+  const switchPhysics = useSwitchPhysics();
 
   const layoutEditMode = useLayoutEditMode();
   const isDraggingKey = useIsDraggingKey();
@@ -180,12 +183,17 @@ export function KeyCap({ keyConfig, selectedZone, onKeySelect }: KeyCapProps) {
   const displayLabel = keyCustom?.label ?? keyConfig.label;
   const stickers: StickerInstance[] = keyCustom?.stickers ?? [];
 
+  const animationSpeeds = useMemo(
+    () => calculateAnimationSpeed(switchPhysics),
+    [switchPhysics]
+  );
+
   const pressDepth = useMemo(
-    () => (layoutEditMode ? 0 : isPressed ? -0.18 : 0),
-    [layoutEditMode, isPressed]
+    () => layoutEditMode ? 0 : calculatePressDepth(switchPhysics, isPressed),
+    [layoutEditMode, isPressed, switchPhysics]
   );
   const targetScale = useMemo(
-    () => (layoutEditMode ? 1 : isPressed ? 0.985 : 1),
+    () => layoutEditMode ? 1 : isPressed ? 0.985 : 1,
     [layoutEditMode, isPressed]
   );
 
@@ -308,25 +316,28 @@ export function KeyCap({ keyConfig, selectedZone, onKeySelect }: KeyCapProps) {
 
   useFrame((state, delta) => {
     if (groupRef.current) {
+      const lerpFactor = isPressed ? animationSpeeds.pressSpeed : animationSpeeds.releaseSpeed;
+      const scaleLerpFactor = isPressed ? switchPhysics.damping : switchPhysics.returnSpeed;
+      
       groupRef.current.position.y = THREE.MathUtils.lerp(
         groupRef.current.position.y,
         pressDepth,
-        delta * 18
+        delta * lerpFactor
       );
       groupRef.current.scale.y = THREE.MathUtils.lerp(
         groupRef.current.scale.y,
         targetScale,
-        delta * 14
+        delta * scaleLerpFactor
       );
       groupRef.current.scale.x = THREE.MathUtils.lerp(
         groupRef.current.scale.x,
         targetScale,
-        delta * 14
+        delta * scaleLerpFactor
       );
       groupRef.current.scale.z = THREE.MathUtils.lerp(
         groupRef.current.scale.z,
         targetScale,
-        delta * 14
+        delta * scaleLerpFactor
       );
     }
 

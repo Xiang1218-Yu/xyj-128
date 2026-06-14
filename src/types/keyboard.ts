@@ -53,12 +53,24 @@ export interface ZoneConfig {
   defaultColor: string;
 }
 
+export interface SwitchPhysicsParams {
+  totalTravel: number;
+  actuationTravel: number;
+  actuationForce: number;
+  tactileForce: number;
+  tactileTravel: number;
+  bottomOutForce: number;
+  returnSpeed: number;
+  damping: number;
+}
+
 export interface SwitchConfig {
   id: SwitchType;
   name: string;
   description: string;
   category: 'linear' | 'tactile' | 'clicky';
   color: string;
+  physics: SwitchPhysicsParams;
 }
 
 export interface FontConfig {
@@ -168,6 +180,10 @@ export interface KeyboardState {
   favoriteSchemeIds: string[];
   customSchemes: ColorScheme[];
   activeSchemeId: string | null;
+  customSwitchPhysics: Partial<SwitchPhysicsParams>;
+  useCustomSwitchPhysics: boolean;
+  curveAnimationProgress: number;
+  isCurveAnimating: boolean;
 }
 
 export interface KeyboardActions {
@@ -214,4 +230,9 @@ export interface KeyboardActions {
   addCustomScheme: (scheme: ColorScheme) => void;
   removeCustomScheme: (schemeId: string) => void;
   setActiveSchemeId: (schemeId: string | null) => void;
+  setCustomSwitchPhysics: (params: Partial<SwitchPhysicsParams>) => void;
+  setUseCustomSwitchPhysics: (enabled: boolean) => void;
+  resetCustomSwitchPhysics: () => void;
+  setCurveAnimationProgress: (progress: number) => void;
+  setIsCurveAnimating: (animating: boolean) => void;
 }
