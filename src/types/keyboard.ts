@@ -119,6 +119,26 @@ export interface ZoneRGBConfig {
 
 export type SnapGridSize = 0.01 | 0.05 | 0.1 | 0.25 | 0.5;
 
+export type ColorSchemeCategory =
+  | 'classic'
+  | 'retro'
+  | 'cyber'
+  | 'nature'
+  | 'pastel'
+  | 'dark'
+  | 'gaming'
+  | 'artisan';
+
+export interface ColorScheme {
+  id: string;
+  name: string;
+  description: string;
+  category: ColorSchemeCategory;
+  zoneColors: Record<KeyZone, string>;
+  fontColor: string;
+  isCustom?: boolean;
+}
+
 export interface KeyboardState {
   layout: LayoutType;
   caseMaterial: CaseMaterial;
@@ -145,6 +165,9 @@ export interface KeyboardState {
   snapToGrid: boolean;
   snapGridSize: SnapGridSize;
   collisionDetection: boolean;
+  favoriteSchemeIds: string[];
+  customSchemes: ColorScheme[];
+  activeSchemeId: string | null;
 }
 
 export interface KeyboardActions {
@@ -186,4 +209,9 @@ export interface KeyboardActions {
   setSnapToGrid: (enabled: boolean) => void;
   setSnapGridSize: (size: SnapGridSize) => void;
   setCollisionDetection: (enabled: boolean) => void;
+  applyColorScheme: (scheme: ColorScheme) => void;
+  toggleFavoriteScheme: (schemeId: string) => void;
+  addCustomScheme: (scheme: ColorScheme) => void;
+  removeCustomScheme: (schemeId: string) => void;
+  setActiveSchemeId: (schemeId: string | null) => void;
 }
