@@ -1,4 +1,9 @@
-import { KeyConfig, KeyTransform, SnapGridSize } from '@/types/keyboard';
+import { KeyConfig, KeyTransform, SnapGridSize, RowKeyDef, LayoutRowDef } from '@/types/keyboard';
+
+export const KEY_UNIT = 1;
+export const KEY_GAP_X = 0.05;
+export const KEY_GAP_Y = 0.1;
+export const ROW_HEIGHT = KEY_UNIT + KEY_GAP_Y;
 
 export interface AABB {
   left: number;
@@ -166,3 +171,100 @@ export const SNAP_GRID_OPTIONS: { value: SnapGridSize; label: string }[] = [
   { value: 0.25, label: '粗 (0.25)' },
   { value: 0.5, label: '极粗 (0.5)' },
 ];
+
+export const calculateLayoutDimensions = (
+  keys: KeyConfig[]
+): { width: number; height: number } => {
+  if (keys.length === 0) return { width: 0, height: 0 };
+  let maxX = 0;
+  let maxY = 0;
+  for (const k of keys) {
+    const right = k.x + k.width;
+    const bottom = k.y + k.height;
+    if (right > maxX) maxX = right;
+    if (bottom > maxY) maxY = bottom;
+  }
+  return { width: maxX, height: maxY };
+};
+
+export interface GenerateKeyRowOptions {
+  rowIndex: number;
+  rowStartX?: number;
+  colStartIndex?: number;
+  idPrefix?: string;
+}
+
+export const generateKeyRow = (
+  rowKeys: RowKeyDef[],
+  options: GenerateKeyRowOptions
+): KeyConfig[] => {
+  const { rowIndex, rowStartX = 0, colStartIndex = 0, idPrefix = '' } = options;
+  const result: KeyConfig[] = [];
+  let currentX = rowStartX;
+
+  rowKeys.forEach((k, i) => {
+    const width = k.width ?? KEY_UNIT;
+    const height = k.height ?? KEY_UNIT;
+    const xOffset = k.xOffset ?? 0;
+    currentX += xOffset;
+    const col = colStartIndex + i;
+    const id = idPrefix ? `${idPrefix}r${rowIndex}-${i}` : `r${rowIndex}-${i}`;
+
+    result.push({
+      id,
+      label: k.label,
+      x: currentX,
+      y: rowIndex * ROW_HEIGHT,
+      width,
+      height,
+      row: rowIndex,
+      col,
+      zone: k.zone,
+      keyCode: k.keyCode,
+    });
+
+    currentX += width + KEY_GAP_X;
+  });
+
+  return result;
+};
+
+export const generateLayoutKeys = (
+  rows: LayoutRowDef[],
+  idPrefix?: string
+): KeyConfig[] => {
+  const result: KeyConfig[] = [];
+  rows.forEach((row, rowIndex) => {
+    const yOffset = row.yOffset ?? 0;
+    const actualRowIndex = row.rowIndexOverride ?? rowIndex;
+    const rowKeys = generateKeyRow(row.keys, {
+      rowIndex: actualRowIndex,
+      rowStartX: row.startX ?? 0,
+      colStartIndex: row.startCol ?? 0,
+      idPrefix,
+    });
+    if (yOffset !== 0) {
+      rowKeys.forEach((k) => {
+        k.y += yOffset;
+      });
+    }
+    result.push(...rowKeys);
+  });
+  return result;
+};
+
+export const shiftKeys = (
+  keys: KeyConfig[],
+  dx: number,
+  dy: number,
+  dRow: number = 0,
+  idPrefix?: string
+): KeyConfig[] => {
+  return keys.map((k) => ({
+    ...k,
+    id: idPrefix ? `${idPrefix}${k.id}` : k.id,
+    x: k.x + dx,
+    y: k.y + dy,
+    row: k.row + dRow,
+  }));
+};

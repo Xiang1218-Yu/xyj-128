@@ -46,6 +46,23 @@ export interface LayoutConfig {
   height: number;
 }
 
+export interface RowKeyDef {
+  label: string;
+  width?: number;
+  height?: number;
+  zone: KeyZone;
+  keyCode?: string;
+  xOffset?: number;
+}
+
+export interface LayoutRowDef {
+  keys: RowKeyDef[];
+  yOffset?: number;
+  startX?: number;
+  startCol?: number;
+  rowIndexOverride?: number;
+}
+
 export interface MaterialConfig {
   id: CaseMaterial;
   name: string;
