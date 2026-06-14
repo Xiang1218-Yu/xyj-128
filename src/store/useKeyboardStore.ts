@@ -1,10 +1,11 @@
 import { create } from 'zustand';
-import { KeyboardState, KeyboardActions, LayoutType, CaseMaterial, KeyZone, SwitchType, FontStyle, StickerType, LightingMode, KeyTransform, LayoutConfig, SnapGridSize } from '@/types/keyboard';
+import { KeyboardState, KeyboardActions, LayoutType, CaseMaterial, KeyZone, SwitchType, FontStyle, StickerType, LightingMode, KeyTransform, LayoutConfig, SnapGridSize, ColorScheme } from '@/types/keyboard';
 import { DEFAULT_ZONE_COLORS } from '@/data/zones';
 import { DEFAULT_FONT_SIZE, DEFAULT_FONT_COLOR } from '@/data/fonts';
 import { DEFAULT_RGB_COLORS, DEFAULT_RGB_BRIGHTNESS, DEFAULT_RGB_SPEED } from '@/data/lighting';
 import { LAYOUT_CONFIGS } from '@/data/layouts';
 import { checkCollisionWithOthers, snapTransformToGrid, findNonCollidingPosition, clampToBounds } from '@/utils/layoutUtils';
+import { COLOR_SCHEMES } from '@/data/colorSchemes';
 
 interface KeyboardStore extends KeyboardState, KeyboardActions {}
 
@@ -13,6 +14,26 @@ const genStickerId = () => `sticker_${Date.now()}_${++stickerIdCounter}`;
 
 const CUSTOM_LAYOUTS_STORAGE_KEY = 'keyboard_custom_layouts';
 const CUSTOM_TRANSFORMS_STORAGE_KEY = 'keyboard_custom_transforms';
+const FAVORITE_SCHEMES_STORAGE_KEY = 'keyboard_favorite_schemes';
+const CUSTOM_SCHEMES_STORAGE_KEY = 'keyboard_custom_schemes';
+
+const loadFavoriteSchemes = (): string[] => {
+  try {
+    const raw = localStorage.getItem(FAVORITE_SCHEMES_STORAGE_KEY);
+    return raw ? JSON.parse(raw) : [];
+  } catch {
+    return [];
+  }
+};
+
+const loadCustomSchemes = (): ColorScheme[] => {
+  try {
+    const raw = localStorage.getItem(CUSTOM_SCHEMES_STORAGE_KEY);
+    return raw ? JSON.parse(raw) : [];
+  } catch {
+    return [];
+  }
+};
 
 const loadSavedLayouts = (): Record<string, LayoutConfig> => {
   try {
@@ -49,6 +70,9 @@ export const useKeyboardStore = create<KeyboardStore>((set, get) => ({
   snapToGrid: true,
   snapGridSize: 0.05,
   collisionDetection: true,
+  favoriteSchemeIds: loadFavoriteSchemes(),
+  customSchemes: loadCustomSchemes(),
+  activeSchemeId: null,
 
   setLayout: (layout: LayoutType) => {
     set({ layout });
@@ -460,6 +484,67 @@ export const useKeyboardStore = create<KeyboardStore>((set, get) => ({
   setCollisionDetection: (collisionDetection: boolean) => {
     set({ collisionDetection });
   },
+
+  applyColorScheme: (scheme: ColorScheme) => {
+    set({
+      zoneColors: { ...scheme.zoneColors },
+      fontColor: scheme.fontColor,
+      activeSchemeId: scheme.id,
+    });
+  },
+
+  toggleFavoriteScheme: (schemeId: string) => {
+    set((state) => {
+      const isFavorited = state.favoriteSchemeIds.includes(schemeId);
+      const newFavorites = isFavorited
+        ? state.favoriteSchemeIds.filter((id) => id !== schemeId)
+        : [...state.favoriteSchemeIds, schemeId];
+      try {
+        localStorage.setItem(FAVORITE_SCHEMES_STORAGE_KEY, JSON.stringify(newFavorites));
+      } catch {
+        // ignore
+      }
+      return { favoriteSchemeIds: newFavorites };
+    });
+  },
+
+  addCustomScheme: (scheme: ColorScheme) => {
+    set((state) => {
+      const newSchemes = [...state.customSchemes, scheme];
+      try {
+        localStorage.setItem(CUSTOM_SCHEMES_STORAGE_KEY, JSON.stringify(newSchemes));
+      } catch {
+        // ignore
+      }
+      return { customSchemes: newSchemes };
+    });
+  },
+
+  removeCustomScheme: (schemeId: string) => {
+    set((state) => {
+      const newSchemes = state.customSchemes.filter((s) => s.id !== schemeId);
+      try {
+        localStorage.setItem(CUSTOM_SCHEMES_STORAGE_KEY, JSON.stringify(newSchemes));
+      } catch {
+        // ignore
+      }
+      const newFavorites = state.favoriteSchemeIds.filter((id) => id !== schemeId);
+      try {
+        localStorage.setItem(FAVORITE_SCHEMES_STORAGE_KEY, JSON.stringify(newFavorites));
+      } catch {
+        // ignore
+      }
+      return {
+        customSchemes: newSchemes,
+        favoriteSchemeIds: newFavorites,
+        activeSchemeId: state.activeSchemeId === schemeId ? null : state.activeSchemeId,
+      };
+    });
+  },
+
+  setActiveSchemeId: (schemeId: string | null) => {
+    set({ activeSchemeId: schemeId });
+  },
 }));
 
 export const useLayout = () => useKeyboardStore((state) => state.layout);
@@ -506,3 +591,12 @@ export const getEffectiveKeyConfig = (keyConfig: any, keyCustoms: Record<string,
 export const useSnapToGrid = () => useKeyboardStore((state) => state.snapToGrid);
 export const useSnapGridSize = () => useKeyboardStore((state) => state.snapGridSize);
 export const useCollisionDetection = () => useKeyboardStore((state) => state.collisionDetection);
+export const useFavoriteSchemeIds = () => useKeyboardStore((state) => state.favoriteSchemeIds);
+export const useCustomSchemes = () => useKeyboardStore((state) => state.customSchemes);
+export const useActiveSchemeId = () => useKeyboardStore((state) => state.activeSchemeId);
+export const useIsSchemeFavorited = (schemeId: string) =>
+  useKeyboardStore((state) => state.favoriteSchemeIds.includes(schemeId));
+export const useAllSchemes = () => {
+  const customSchemes = useKeyboardStore((state) => state.customSchemes);
+  return { COLOR_SCHEMES, customSchemes };
+};

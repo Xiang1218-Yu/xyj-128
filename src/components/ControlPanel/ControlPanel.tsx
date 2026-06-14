@@ -7,6 +7,7 @@ import { SwitchSelector } from './SwitchSelector';
 import { KeyCapEditor } from './KeyCapEditor';
 import { LightingControl } from './LightingControl';
 import { LayoutEditor } from './LayoutEditor';
+import { ColorSchemeMarket } from './ColorSchemeMarket';
 import { TypingGame } from '@/components/TypingGame/TypingGame';
 import { KeyZone } from '@/types/keyboard';
 import { useLayout, useLayoutEditMode } from '@/store/useKeyboardStore';
@@ -78,6 +79,8 @@ export function ControlPanel({ selectedZone, onZoneChange, onExport, isExporting
         <MaterialSelector />
         <div className="w-full h-px bg-gradient-to-r from-transparent via-gray-700/50 to-transparent" />
         <SwitchSelector />
+        <div className="w-full h-px bg-gradient-to-r from-transparent via-gray-700/50 to-transparent" />
+        <ColorSchemeMarket />
         <div className="w-full h-px bg-gradient-to-r from-transparent via-gray-700/50 to-transparent" />
         <LightingControl />
         <div className="w-full h-px bg-gradient-to-r from-transparent via-gray-700/50 to-transparent" />
