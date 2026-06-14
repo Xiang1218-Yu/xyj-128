@@ -28,6 +28,8 @@ import {
   useSnapToGrid,
   useCollisionDetection,
   useSwitchPhysics,
+  useKeyCapProfileConfig,
+  useKeyboardScale,
 } from '@/store/useKeyboardStore';
 import { calculatePressDepth, calculateAnimationSpeed } from '@/utils/switchCurve';
 import { useCurrentHighlightKeyId, useIsTypingGameActive } from '@/store/useTypingGameStore';
@@ -112,12 +114,20 @@ export function KeyCap({ keyConfig, selectedZone, onKeySelect }: KeyCapProps) {
   const layoutEditMode = useLayoutEditMode();
   const isDraggingKey = useIsDraggingKey();
   const isResizingKey = useIsResizingKey();
+  const keyCapProfile = useKeyCapProfileConfig();
+  const keyboardScale = useKeyboardScale();
 
   const customTransform = keyCustom?.transform;
   const effectiveX = customTransform?.x ?? keyConfig.x;
   const effectiveY = customTransform?.y ?? keyConfig.y;
   const effectiveWidth = customTransform?.width ?? keyConfig.width;
   const effectiveHeight = customTransform?.height ?? keyConfig.height;
+
+  const rowIndex = Math.min(Math.max(keyConfig.row, 0), keyCapProfile.rowHeightVariation.length - 1);
+  const rowHeightMultiplier = keyCapProfile.rowHeightVariation[rowIndex];
+  const keyCapHeight = keyCapProfile.height * rowHeightMultiplier;
+  const keyCapTopRadius = keyCapProfile.topRadius;
+  const keyCapBottomRadius = keyCapProfile.bottomRadius;
 
   const pointerDownTimeRef = useRef<number>(0);
   const longPressTimerRef = useRef<number | null>(null);
@@ -744,8 +754,8 @@ export function KeyCap({ keyConfig, selectedZone, onKeySelect }: KeyCapProps) {
       <group ref={groupRef}>
         <RoundedBox
           ref={meshRef}
-          args={[effectiveWidth * 0.92, 0.4, effectiveHeight * 0.92]}
-          radius={0.08}
+          args={[effectiveWidth * 0.92, keyCapHeight, effectiveHeight * 0.92]}
+          radius={keyCapTopRadius}
           smoothness={4}
           onPointerDown={handlePointerDownKey}
           onPointerUp={handlePointerUpKey}
@@ -763,6 +773,19 @@ export function KeyCap({ keyConfig, selectedZone, onKeySelect }: KeyCapProps) {
           />
         </RoundedBox>
 
+        {isPressed && !layoutEditMode && (
+          <mesh position={[0, -keyCapHeight / 2 + 0.01, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+            <ringGeometry args={[effectiveWidth * 0.35, effectiveWidth * 0.55, 32]} />
+            <meshBasicMaterial
+              color="#22d3ee"
+              transparent
+              opacity={0.6}
+              side={THREE.DoubleSide}
+              depthWrite={false}
+            />
+          </mesh>
+        )}
+
         {layoutEditMode && isKeySelected && (
           <>
             <lineSegments>
@@ -771,7 +794,7 @@ export function KeyCap({ keyConfig, selectedZone, onKeySelect }: KeyCapProps) {
                 args={[
                   new THREE.BoxGeometry(
                     effectiveWidth * 0.92 + 0.1,
-                    0.42,
+                    keyCapHeight + 0.02,
                     effectiveHeight * 0.92 + 0.1
                   ),
                 ]}
@@ -786,7 +809,7 @@ export function KeyCap({ keyConfig, selectedZone, onKeySelect }: KeyCapProps) {
             <mesh
               position={[
                 (effectiveWidth * 0.92) / 2,
-                0.25,
+                keyCapHeight / 2 + 0.05,
                 (effectiveHeight * 0.92) / 2,
               ]}
               onPointerDown={handleResizePointerDown}
@@ -811,7 +834,7 @@ export function KeyCap({ keyConfig, selectedZone, onKeySelect }: KeyCapProps) {
               <mesh
                 position={[
                   -(effectiveWidth * 0.92) / 2,
-                  0.3,
+                  keyCapHeight / 2 + 0.1,
                   (effectiveHeight * 0.92) / 2,
                 ]}
               >
@@ -838,7 +861,7 @@ export function KeyCap({ keyConfig, selectedZone, onKeySelect }: KeyCapProps) {
               ref={(el) => {
                 stickerGroupRefs.current[sticker.id] = el;
               }}
-              position={[stickerX, 0.215, stickerZ]}
+              position={[stickerX, keyCapHeight / 2 + 0.015, stickerZ]}
             >
               {isStickerSelected && (
                 <mesh rotation={[-Math.PI / 2, 0, 0]}>
@@ -866,7 +889,7 @@ export function KeyCap({ keyConfig, selectedZone, onKeySelect }: KeyCapProps) {
         })}
 
         <Text
-          position={[0, 0.21, 0]}
+          position={[0, keyCapHeight / 2 + 0.01, 0]}
           rotation={[-Math.PI / 2, 0, 0]}
           fontSize={fontSize}
           color={fontColor}

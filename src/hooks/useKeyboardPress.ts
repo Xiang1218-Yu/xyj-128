@@ -10,6 +10,8 @@ export const useKeyboardPress = () => {
   const soundEnabled = useSoundEnabled();
   const pressKey = useKeyboardStore((state) => state.pressKey);
   const releaseKey = useKeyboardStore((state) => state.releaseKey);
+  const recordKeyPress = useKeyboardStore((state) => state.recordKeyPress);
+  const recordKeyRelease = useKeyboardStore((state) => state.recordKeyRelease);
 
   const getKeyIdByCode = useCallback(
     (code: string): string | null => {
@@ -38,6 +40,7 @@ export const useKeyboardPress = () => {
       if (keyId) {
         e.preventDefault();
         pressKey(keyId);
+        recordKeyPress();
         if (soundEnabled) {
           playPressSound(switchType);
         }
@@ -50,6 +53,7 @@ export const useKeyboardPress = () => {
       if (keyId) {
         e.preventDefault();
         releaseKey(keyId);
+        recordKeyRelease();
         if (soundEnabled) {
           playReleaseSound(switchType);
         }
@@ -63,5 +67,5 @@ export const useKeyboardPress = () => {
       window.removeEventListener('keydown', handleKeyDown);
       window.removeEventListener('keyup', handleKeyUp);
     };
-  }, [getKeyIdByCode, pressKey, releaseKey, switchType, soundEnabled]);
+  }, [getKeyIdByCode, pressKey, releaseKey, recordKeyPress, recordKeyRelease, switchType, soundEnabled]);
 };

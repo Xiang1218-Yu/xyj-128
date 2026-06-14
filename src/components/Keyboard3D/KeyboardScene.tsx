@@ -5,7 +5,7 @@ import { EffectComposer, Bloom } from '@react-three/postprocessing';
 import { Lights } from './Lights';
 import { KeyboardCase } from './KeyboardCase';
 import { KeyCap } from './KeyCap';
-import { useLayout, useIsDraggingSticker, useLayoutEditMode, useIsDraggingKey, useIsResizingKey, useUITheme } from '@/store/useKeyboardStore';
+import { useLayout, useIsDraggingSticker, useLayoutEditMode, useIsDraggingKey, useIsResizingKey, useUITheme, useKeyboardScale, useKeyCapProfileConfig } from '@/store/useKeyboardStore';
 import { LAYOUT_CONFIGS } from '@/data/layouts';
 import { getUITheme } from '@/data/themes';
 import { KeyZone } from '@/types/keyboard';
@@ -36,6 +36,8 @@ function KeyboardContent({ selectedZone, onKeySelect }: KeyboardContentProps) {
   const layout = useLayout();
   const layoutConfig = LAYOUT_CONFIGS[layout];
   const groupRef = useRef<THREE.Group>(null);
+  const keyboardScale = useKeyboardScale();
+  const keyCapProfile = useKeyCapProfileConfig();
 
   useFrame((state) => {
     if (groupRef.current) {
@@ -44,20 +46,40 @@ function KeyboardContent({ selectedZone, onKeySelect }: KeyboardContentProps) {
   });
 
   const keys = useMemo(() => {
-    return layoutConfig.keys.map((keyConfig) => (
-      <KeyCap
-        key={keyConfig.id}
-        keyConfig={keyConfig}
-        selectedZone={selectedZone}
-        onKeySelect={onKeySelect}
-      />
-    ));
-  }, [layoutConfig.keys, selectedZone, onKeySelect]);
+    const gap = keyboardScale.keyGap;
+    return layoutConfig.keys.map((keyConfig) => {
+      const gapX = keyConfig.col * gap;
+      const gapY = keyConfig.row * gap;
+      const newX = keyConfig.x + gapX;
+      const newY = keyConfig.y + gapY;
+      return (
+        <KeyCap
+          key={keyConfig.id}
+          keyConfig={{
+            ...keyConfig,
+            x: newX,
+            y: newY,
+          }}
+          selectedZone={selectedZone}
+          onKeySelect={onKeySelect}
+        />
+      );
+    });
+  }, [layoutConfig.keys, selectedZone, onKeySelect, keyboardScale.keyGap]);
+
+  const maxCol = Math.max(...layoutConfig.keys.map((k) => k.col));
+  const maxRow = Math.max(...layoutConfig.keys.map((k) => k.row));
+  const scaledWidth = layoutConfig.width + maxCol * keyboardScale.keyGap;
+  const scaledHeight = layoutConfig.height + maxRow * keyboardScale.keyGap;
 
   return (
-    <group ref={groupRef}>
+    <group
+      ref={groupRef}
+      scale={keyboardScale.overall}
+      rotation={[keyboardScale.tiltX, 0, keyboardScale.tiltZ]}
+    >
       <KeyboardCase />
-      <group position={[-layoutConfig.width / 2, 0.35, -layoutConfig.height / 2]}>
+      <group position={[-scaledWidth / 2, 0.35, -scaledHeight / 2]}>
         {keys}
       </group>
     </group>

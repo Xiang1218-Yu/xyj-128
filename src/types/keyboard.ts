@@ -1,5 +1,7 @@
 export type LayoutType = '60%' | '65%' | '75%' | 'TKL' | 'Full';
 
+export type KeyCapProfile = 'cherry' | 'oem' | 'dsa' | 'sa' | 'xda' | 'low-profile';
+
 export type FontStyle = 'sans' | 'serif' | 'mono' | 'rounded' | 'display';
 
 export type StickerType = 'cat' | 'star' | 'heart' | 'fire' | 'lightning' | 'music' | 'gamepad' | 'coffee' | 'rocket' | 'diamond' | 'crown';
@@ -223,6 +225,35 @@ export interface ColorScheme {
   isCustom?: boolean;
 }
 
+export interface KeyCapProfileConfig {
+  id: KeyCapProfile;
+  name: string;
+  description: string;
+  height: number;
+  topRadius: number;
+  bottomRadius: number;
+  sideAngle: number;
+  rowHeightVariation: number[];
+}
+
+export interface KeyboardScale {
+  overall: number;
+  keyGap: number;
+  tiltX: number;
+  tiltZ: number;
+}
+
+export interface TypingStats {
+  totalKeyPresses: number;
+  totalKeyReleases: number;
+  startTime: number | null;
+  lastPressTime: number | null;
+  wpm: number;
+  accuracy: number;
+  correctChars: number;
+  totalChars: number;
+}
+
 export interface KeyboardState {
   layout: LayoutType;
   caseMaterial: CaseMaterial;
@@ -261,6 +292,9 @@ export interface KeyboardState {
   curveAnimationProgress: number;
   isCurveAnimating: boolean;
   uiTheme: UIThemeType;
+  keyCapProfile: KeyCapProfile;
+  keyboardScale: KeyboardScale;
+  typingStats: TypingStats;
 }
 
 export interface KeyboardActions {
@@ -318,4 +352,11 @@ export interface KeyboardActions {
   setCurveAnimationProgress: (progress: number) => void;
   setIsCurveAnimating: (animating: boolean) => void;
   setUITheme: (theme: UIThemeType) => void;
+  setKeyCapProfile: (profile: KeyCapProfile) => void;
+  setKeyboardScale: (scale: Partial<KeyboardScale>) => void;
+  resetKeyboardScale: () => void;
+  recordKeyPress: () => void;
+  recordKeyRelease: () => void;
+  resetTypingStats: () => void;
+  setTypingAccuracy: (correct: boolean) => void;
 }

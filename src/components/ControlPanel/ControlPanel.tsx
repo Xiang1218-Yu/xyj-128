@@ -10,6 +10,10 @@ import { LightingControl } from './LightingControl';
 import { LayoutEditor } from './LayoutEditor';
 import { ColorSchemeMarket } from './ColorSchemeMarket';
 import { ThemeSelector } from './ThemeSelector';
+import { KeyCapProfileSelector } from './KeyCapProfileSelector';
+import { KeyboardScaleControl } from './KeyboardScaleControl';
+import { TypingStatsPanel } from './TypingStatsPanel';
+import { PressDepthIndicator } from './PressDepthIndicator';
 import { TypingGame } from '@/components/TypingGame/TypingGame';
 import { KeyZone } from '@/types/keyboard';
 import { useLayout, useLayoutEditMode } from '@/store/useKeyboardStore';
@@ -84,6 +88,8 @@ export function ControlPanel({ selectedZone, onZoneChange, onExport, isExporting
         <div className="w-full h-px bg-gradient-to-r from-transparent via-gray-700/50 to-transparent" />
         <LayoutSelector />
         <div className="w-full h-px bg-gradient-to-r from-transparent via-gray-700/50 to-transparent" />
+        <KeyCapProfileSelector />
+        <div className="w-full h-px bg-gradient-to-r from-transparent via-gray-700/50 to-transparent" />
         <LayoutEditor />
         <div className="w-full h-px bg-gradient-to-r from-transparent via-gray-700/50 to-transparent" />
         <MaterialSelector />
@@ -92,6 +98,8 @@ export function ControlPanel({ selectedZone, onZoneChange, onExport, isExporting
         <div className="w-full h-px bg-gradient-to-r from-transparent via-gray-700/50 to-transparent" />
         <SwitchCurveVisualizer />
         <div className="w-full h-px bg-gradient-to-r from-transparent via-gray-700/50 to-transparent" />
+        <PressDepthIndicator />
+        <div className="w-full h-px bg-gradient-to-r from-transparent via-gray-700/50 to-transparent" />
         <ColorSchemeMarket />
         <div className="w-full h-px bg-gradient-to-r from-transparent via-gray-700/50 to-transparent" />
         <LightingControl />
@@ -99,6 +107,10 @@ export function ControlPanel({ selectedZone, onZoneChange, onExport, isExporting
         <ZoneColorPicker selectedZone={selectedZone} onZoneChange={onZoneChange} />
         <div className="w-full h-px bg-gradient-to-r from-transparent via-gray-700/50 to-transparent" />
         <KeyCapEditor />
+        <div className="w-full h-px bg-gradient-to-r from-transparent via-gray-700/50 to-transparent" />
+        <KeyboardScaleControl />
+        <div className="w-full h-px bg-gradient-to-r from-transparent via-gray-700/50 to-transparent" />
+        <TypingStatsPanel />
       </div>
 
       <div className={`p-4 border-t ${colors.borderColor} space-y-3`}>

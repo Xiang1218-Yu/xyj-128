@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { KeyboardState, KeyboardActions, LayoutType, CaseMaterial, KeyZone, SwitchType, FontStyle, StickerType, LightingMode, KeyTransform, LayoutConfig, SnapGridSize, ColorScheme, SwitchPhysicsParams, UIThemeType, TextureDetailLevel, WearLevel, EngravingType } from '@/types/keyboard';
+import { KeyboardState, KeyboardActions, LayoutType, CaseMaterial, KeyZone, SwitchType, FontStyle, StickerType, LightingMode, KeyTransform, LayoutConfig, SnapGridSize, ColorScheme, SwitchPhysicsParams, UIThemeType, TextureDetailLevel, WearLevel, EngravingType, KeyCapProfile, KeyboardScale, TypingStats } from '@/types/keyboard';
 import { DEFAULT_ZONE_COLORS } from '@/data/zones';
 import { DEFAULT_FONT_SIZE, DEFAULT_FONT_COLOR } from '@/data/fonts';
 import { DEFAULT_RGB_COLORS, DEFAULT_RGB_BRIGHTNESS, DEFAULT_RGB_SPEED } from '@/data/lighting';
@@ -8,6 +8,7 @@ import { SWITCH_CONFIGS } from '@/data/switches';
 import { checkCollisionWithOthers, snapTransformToGrid, findNonCollidingPosition, clampToBounds } from '@/utils/layoutUtils';
 import { COLOR_SCHEMES } from '@/data/colorSchemes';
 import { MATERIAL_CONFIGS, DEFAULT_ENGRAVING_COLOR } from '@/data/materials';
+import { DEFAULT_KEYCAP_PROFILE, KEYCAP_PROFILE_CONFIGS } from '@/data/keycapProfiles';
 
 interface KeyboardStore extends KeyboardState, KeyboardActions {}
 
@@ -97,6 +98,23 @@ export const useKeyboardStore = create<KeyboardStore>((set, get) => ({
   curveAnimationProgress: 0,
   isCurveAnimating: false,
   uiTheme: loadUITheme(),
+  keyCapProfile: DEFAULT_KEYCAP_PROFILE,
+  keyboardScale: {
+    overall: 1,
+    keyGap: 0,
+    tiltX: 0,
+    tiltZ: 0,
+  },
+  typingStats: {
+    totalKeyPresses: 0,
+    totalKeyReleases: 0,
+    startTime: null,
+    lastPressTime: null,
+    wpm: 0,
+    accuracy: 100,
+    correctChars: 0,
+    totalChars: 0,
+  },
 
   setLayout: (layout: LayoutType) => {
     set({ layout });
@@ -636,6 +654,93 @@ export const useKeyboardStore = create<KeyboardStore>((set, get) => ({
     }
     set({ uiTheme: theme });
   },
+
+  setKeyCapProfile: (profile: KeyCapProfile) => {
+    set({ keyCapProfile: profile });
+  },
+
+  setKeyboardScale: (scale: Partial<KeyboardScale>) => {
+    set((state) => ({
+      keyboardScale: {
+        ...state.keyboardScale,
+        ...scale,
+      },
+    }));
+  },
+
+  resetKeyboardScale: () => {
+    set({
+      keyboardScale: {
+        overall: 1,
+        keyGap: 0,
+        tiltX: 0,
+        tiltZ: 0,
+      },
+    });
+  },
+
+  recordKeyPress: () => {
+    set((state) => {
+      const now = Date.now();
+      const startTime = state.typingStats.startTime ?? now;
+      const elapsedMinutes = (now - startTime) / 60000;
+      const totalPresses = state.typingStats.totalKeyPresses + 1;
+      const wpm = elapsedMinutes > 0 ? Math.round(totalPresses / 5 / elapsedMinutes) : 0;
+
+      return {
+        typingStats: {
+          ...state.typingStats,
+          totalKeyPresses: totalPresses,
+          startTime,
+          lastPressTime: now,
+          wpm,
+        },
+      };
+    });
+  },
+
+  recordKeyRelease: () => {
+    set((state) => ({
+      typingStats: {
+        ...state.typingStats,
+        totalKeyReleases: state.typingStats.totalKeyReleases + 1,
+      },
+    }));
+  },
+
+  resetTypingStats: () => {
+    set({
+      typingStats: {
+        totalKeyPresses: 0,
+        totalKeyReleases: 0,
+        startTime: null,
+        lastPressTime: null,
+        wpm: 0,
+        accuracy: 100,
+        correctChars: 0,
+        totalChars: 0,
+      },
+    });
+  },
+
+  setTypingAccuracy: (correct: boolean) => {
+    set((state) => {
+      const totalChars = state.typingStats.totalChars + 1;
+      const correctChars = correct
+        ? state.typingStats.correctChars + 1
+        : state.typingStats.correctChars;
+      const accuracy = totalChars > 0 ? Math.round((correctChars / totalChars) * 100) : 100;
+
+      return {
+        typingStats: {
+          ...state.typingStats,
+          totalChars,
+          correctChars,
+          accuracy,
+        },
+      };
+    });
+  },
 }));
 
 export const useLayout = () => useKeyboardStore((state) => state.layout);
@@ -725,3 +830,12 @@ export const useTextureDetail = () => useKeyboardStore((state) => state.textureD
 export const useWearLevel = () => useKeyboardStore((state) => state.wearLevel);
 export const useEngravingType = () => useKeyboardStore((state) => state.engravingType);
 export const useEngravingColor = () => useKeyboardStore((state) => state.engravingColor);
+
+export const useKeyCapProfile = () => useKeyboardStore((state) => state.keyCapProfile);
+export const useKeyCapProfileConfig = () => {
+  const profile = useKeyboardStore((state) => state.keyCapProfile);
+  return KEYCAP_PROFILE_CONFIGS[profile];
+};
+export const useKeyboardScale = () => useKeyboardStore((state) => state.keyboardScale);
+export const useTypingStats = () => useKeyboardStore((state) => state.typingStats);
+
