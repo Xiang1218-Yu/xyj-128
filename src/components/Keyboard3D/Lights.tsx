@@ -1,43 +1,44 @@
+import { useMemo } from 'react';
+import { useUITheme } from '@/store/useKeyboardStore';
+import { getUITheme } from '@/data/themes';
+
 export function Lights() {
+  const themeId = useUITheme();
+  const theme = useMemo(() => getUITheme(themeId), [themeId]);
+
+  const { sceneAmbience, lighting } = theme;
+
   return (
     <>
-      <ambientLight intensity={0.4} />
-      
-      <directionalLight
-        position={[5, 8, 5]}
-        intensity={1.2}
-        castShadow
-        shadow-mapSize={[2048, 2048]}
-        shadow-camera-far={50}
-        shadow-camera-left={-20}
-        shadow-camera-right={20}
-        shadow-camera-top={20}
-        shadow-camera-bottom={-20}
+      <ambientLight 
+        intensity={sceneAmbience.ambientLightIntensity} 
+        color={sceneAmbience.ambientLightColor || '#ffffff'}
       />
       
-      <directionalLight
-        position={[-5, 5, -3]}
-        intensity={0.6}
-        color="#a0a0ff"
-      />
+      {lighting.directionalLights.map((light, index) => (
+        <directionalLight
+          key={`dir-${index}`}
+          position={light.position}
+          intensity={light.intensity}
+          color={light.color}
+          castShadow={light.castShadow}
+          shadow-mapSize={light.castShadow ? [2048, 2048] : undefined}
+          shadow-camera-far={light.castShadow ? 50 : undefined}
+          shadow-camera-left={light.castShadow ? -20 : undefined}
+          shadow-camera-right={light.castShadow ? 20 : undefined}
+          shadow-camera-top={light.castShadow ? 20 : undefined}
+          shadow-camera-bottom={light.castShadow ? -20 : undefined}
+        />
+      ))}
       
-      <pointLight
-        position={[0, 3, -8]}
-        intensity={0.8}
-        color="#6366f1"
-      />
-      
-      <pointLight
-        position={[-8, 2, 5]}
-        intensity={0.3}
-        color="#8b5cf6"
-      />
-      
-      <pointLight
-        position={[8, 2, 5]}
-        intensity={0.3}
-        color="#06b6d4"
-      />
+      {lighting.pointLights.map((light, index) => (
+        <pointLight
+          key={`point-${index}`}
+          position={light.position}
+          intensity={light.intensity}
+          color={light.color}
+        />
+      ))}
     </>
   );
 }

@@ -131,6 +131,16 @@ export interface ZoneRGBConfig {
 
 export type SnapGridSize = 0.01 | 0.05 | 0.1 | 0.25 | 0.5;
 
+export type UIThemeType =
+  | 'midnight'
+  | 'sunset'
+  | 'ocean'
+  | 'forest'
+  | 'cyberpunk'
+  | 'minimal'
+  | 'vintage'
+  | 'aurora';
+
 export type ColorSchemeCategory =
   | 'classic'
   | 'retro'
@@ -140,6 +150,59 @@ export type ColorSchemeCategory =
   | 'dark'
   | 'gaming'
   | 'artisan';
+
+export interface SceneAmbience {
+  backgroundColor: string;
+  fogColor: string;
+  fogNear: number;
+  fogFar: number;
+  ambientLightIntensity: number;
+  ambientLightColor?: string;
+  bloomIntensity: number;
+  bloomThreshold: number;
+}
+
+export interface DirectionalLightConfig {
+  position: [number, number, number];
+  intensity: number;
+  color: string;
+  castShadow?: boolean;
+}
+
+export interface PointLightConfig {
+  position: [number, number, number];
+  intensity: number;
+  color: string;
+}
+
+export interface ThemeLighting {
+  directionalLights: DirectionalLightConfig[];
+  pointLights: PointLightConfig[];
+}
+
+export interface UIThemeColors {
+  bgPrimary: string;
+  bgSecondary: string;
+  bgTertiary: string;
+  bgElevated: string;
+  textPrimary: string;
+  textSecondary: string;
+  textTertiary: string;
+  borderColor: string;
+  accentPrimary: string;
+  accentSecondary: string;
+  accentGradient: string;
+}
+
+export interface UITheme {
+  id: UIThemeType;
+  name: string;
+  description: string;
+  icon: string;
+  colors: UIThemeColors;
+  sceneAmbience: SceneAmbience;
+  lighting: ThemeLighting;
+}
 
 export interface ColorScheme {
   id: string;
@@ -184,6 +247,7 @@ export interface KeyboardState {
   useCustomSwitchPhysics: boolean;
   curveAnimationProgress: number;
   isCurveAnimating: boolean;
+  uiTheme: UIThemeType;
 }
 
 export interface KeyboardActions {
@@ -235,4 +299,5 @@ export interface KeyboardActions {
   resetCustomSwitchPhysics: () => void;
   setCurveAnimationProgress: (progress: number) => void;
   setIsCurveAnimating: (animating: boolean) => void;
+  setUITheme: (theme: UIThemeType) => void;
 }

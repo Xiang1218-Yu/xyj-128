@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { KeyboardState, KeyboardActions, LayoutType, CaseMaterial, KeyZone, SwitchType, FontStyle, StickerType, LightingMode, KeyTransform, LayoutConfig, SnapGridSize, ColorScheme, SwitchPhysicsParams } from '@/types/keyboard';
+import { KeyboardState, KeyboardActions, LayoutType, CaseMaterial, KeyZone, SwitchType, FontStyle, StickerType, LightingMode, KeyTransform, LayoutConfig, SnapGridSize, ColorScheme, SwitchPhysicsParams, UIThemeType } from '@/types/keyboard';
 import { DEFAULT_ZONE_COLORS } from '@/data/zones';
 import { DEFAULT_FONT_SIZE, DEFAULT_FONT_COLOR } from '@/data/fonts';
 import { DEFAULT_RGB_COLORS, DEFAULT_RGB_BRIGHTNESS, DEFAULT_RGB_SPEED } from '@/data/lighting';
@@ -17,6 +17,7 @@ const CUSTOM_LAYOUTS_STORAGE_KEY = 'keyboard_custom_layouts';
 const CUSTOM_TRANSFORMS_STORAGE_KEY = 'keyboard_custom_transforms';
 const FAVORITE_SCHEMES_STORAGE_KEY = 'keyboard_favorite_schemes';
 const CUSTOM_SCHEMES_STORAGE_KEY = 'keyboard_custom_schemes';
+const UI_THEME_STORAGE_KEY = 'keyboard_ui_theme';
 
 const loadFavoriteSchemes = (): string[] => {
   try {
@@ -33,6 +34,18 @@ const loadCustomSchemes = (): ColorScheme[] => {
     return raw ? JSON.parse(raw) : [];
   } catch {
     return [];
+  }
+};
+
+const loadUITheme = (): UIThemeType => {
+  try {
+    const raw = localStorage.getItem(UI_THEME_STORAGE_KEY);
+    if (raw && ['midnight', 'sunset', 'ocean', 'forest', 'cyberpunk', 'minimal', 'vintage', 'aurora'].includes(raw)) {
+      return raw as UIThemeType;
+    }
+    return 'midnight';
+  } catch {
+    return 'midnight';
   }
 };
 
@@ -78,6 +91,7 @@ export const useKeyboardStore = create<KeyboardStore>((set, get) => ({
   useCustomSwitchPhysics: false,
   curveAnimationProgress: 0,
   isCurveAnimating: false,
+  uiTheme: loadUITheme(),
 
   setLayout: (layout: LayoutType) => {
     set({ layout });
@@ -575,6 +589,15 @@ export const useKeyboardStore = create<KeyboardStore>((set, get) => ({
   setIsCurveAnimating: (animating: boolean) => {
     set({ isCurveAnimating: animating });
   },
+
+  setUITheme: (theme: UIThemeType) => {
+    try {
+      localStorage.setItem(UI_THEME_STORAGE_KEY, theme);
+    } catch {
+      // ignore
+    }
+    set({ uiTheme: theme });
+  },
 }));
 
 export const useLayout = () => useKeyboardStore((state) => state.layout);
@@ -656,3 +679,6 @@ export const useSwitchPhysics = (): SwitchPhysicsParams => {
 
   return basePhysics;
 };
+
+export const useUITheme = () => useKeyboardStore((state) => state.uiTheme);
+export const useSetUITheme = () => useKeyboardStore((state) => state.setUITheme);

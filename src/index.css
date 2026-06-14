@@ -12,6 +12,11 @@
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  --theme-bg: #0a0a0f;
+  --theme-fog: #0a0a0f;
+  --theme-ambient: #ffffff;
+  --theme-bloom-intensity: 0.5;
+  --theme-bloom-threshold: 0.2;
 }
 
 * {
@@ -29,8 +34,9 @@ body,
 }
 
 body {
-  background-color: #0a0a0f;
+  background-color: var(--theme-bg);
   color: #e2e8f0;
+  transition: background-color 0.3s ease;
 }
 
 h1,

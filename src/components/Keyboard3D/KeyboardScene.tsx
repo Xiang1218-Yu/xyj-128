@@ -5,8 +5,9 @@ import { EffectComposer, Bloom } from '@react-three/postprocessing';
 import { Lights } from './Lights';
 import { KeyboardCase } from './KeyboardCase';
 import { KeyCap } from './KeyCap';
-import { useLayout, useIsDraggingSticker, useLayoutEditMode, useIsDraggingKey, useIsResizingKey } from '@/store/useKeyboardStore';
+import { useLayout, useIsDraggingSticker, useLayoutEditMode, useIsDraggingKey, useIsResizingKey, useUITheme } from '@/store/useKeyboardStore';
 import { LAYOUT_CONFIGS } from '@/data/layouts';
+import { getUITheme } from '@/data/themes';
 import { KeyZone } from '@/types/keyboard';
 import * as THREE from 'three';
 
@@ -80,6 +81,8 @@ export function KeyboardScene({ selectedZone, onKeySelect, sceneRefs }: Keyboard
   const layoutEditMode = useLayoutEditMode();
   const isDraggingKey = useIsDraggingKey();
   const isResizingKey = useIsResizingKey();
+  const themeId = useUITheme();
+  const theme = useMemo(() => getUITheme(themeId), [themeId]);
 
   const orbitDisabled = isDraggingSticker || layoutEditMode || isDraggingKey || isResizingKey;
 
@@ -91,6 +94,8 @@ export function KeyboardScene({ selectedZone, onKeySelect, sceneRefs }: Keyboard
   const sceneRefToUse = sceneRefs?.sceneRef ?? defaultSceneRef;
   const cameraRef = sceneRefs?.cameraRef ?? defaultCameraRef;
 
+  const { sceneAmbience } = theme;
+
   return (
     <Canvas
       shadows
@@ -99,8 +104,8 @@ export function KeyboardScene({ selectedZone, onKeySelect, sceneRefs }: Keyboard
       dpr={[1, 2]}
     >
       <SceneRefCapture glRef={glRef} sceneRef={sceneRefToUse} cameraRef={cameraRef} />
-      <color attach="background" args={['#0a0a0f']} />
-      <fog attach="fog" args={['#0a0a0f', 15, 35]} />
+      <color attach="background" args={[sceneAmbience.backgroundColor]} />
+      <fog attach="fog" args={[sceneAmbience.fogColor, sceneAmbience.fogNear, sceneAmbience.fogFar]} />
       
       <Lights />
       <KeyboardContent selectedZone={selectedZone} onKeySelect={onKeySelect} />
@@ -119,10 +124,10 @@ export function KeyboardScene({ selectedZone, onKeySelect, sceneRefs }: Keyboard
       
       <EffectComposer>
         <Bloom
-          luminanceThreshold={0.2}
+          luminanceThreshold={sceneAmbience.bloomThreshold}
           luminanceSmoothing={0.9}
           height={300}
-          intensity={0.5}
+          intensity={sceneAmbience.bloomIntensity}
         />
       </EffectComposer>
     </Canvas>
