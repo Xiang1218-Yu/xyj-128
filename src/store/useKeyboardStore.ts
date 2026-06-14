@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { KeyboardState, KeyboardActions, LayoutType, CaseMaterial, KeyZone, SwitchType, FontStyle, StickerType, LightingMode, KeyTransform, LayoutConfig, SnapGridSize, ColorScheme, SwitchPhysicsParams, UIThemeType } from '@/types/keyboard';
+import { KeyboardState, KeyboardActions, LayoutType, CaseMaterial, KeyZone, SwitchType, FontStyle, StickerType, LightingMode, KeyTransform, LayoutConfig, SnapGridSize, ColorScheme, SwitchPhysicsParams, UIThemeType, TextureDetailLevel, WearLevel, EngravingType } from '@/types/keyboard';
 import { DEFAULT_ZONE_COLORS } from '@/data/zones';
 import { DEFAULT_FONT_SIZE, DEFAULT_FONT_COLOR } from '@/data/fonts';
 import { DEFAULT_RGB_COLORS, DEFAULT_RGB_BRIGHTNESS, DEFAULT_RGB_SPEED } from '@/data/lighting';
@@ -7,6 +7,7 @@ import { LAYOUT_CONFIGS } from '@/data/layouts';
 import { SWITCH_CONFIGS } from '@/data/switches';
 import { checkCollisionWithOthers, snapTransformToGrid, findNonCollidingPosition, clampToBounds } from '@/utils/layoutUtils';
 import { COLOR_SCHEMES } from '@/data/colorSchemes';
+import { MATERIAL_CONFIGS, DEFAULT_ENGRAVING_COLOR } from '@/data/materials';
 
 interface KeyboardStore extends KeyboardState, KeyboardActions {}
 
@@ -61,6 +62,10 @@ const loadSavedLayouts = (): Record<string, LayoutConfig> => {
 export const useKeyboardStore = create<KeyboardStore>((set, get) => ({
   layout: '65%',
   caseMaterial: 'aluminum',
+  textureDetail: MATERIAL_CONFIGS['aluminum'].defaultTextureDetail,
+  wearLevel: MATERIAL_CONFIGS['aluminum'].defaultWearLevel,
+  engravingType: MATERIAL_CONFIGS['aluminum'].defaultEngraving,
+  engravingColor: DEFAULT_ENGRAVING_COLOR,
   switchType: 'red',
   soundEnabled: true,
   zoneColors: { ...DEFAULT_ZONE_COLORS },
@@ -98,7 +103,40 @@ export const useKeyboardStore = create<KeyboardStore>((set, get) => ({
   },
 
   setCaseMaterial: (caseMaterial: CaseMaterial) => {
-    set({ caseMaterial });
+    const config = MATERIAL_CONFIGS[caseMaterial];
+    set({
+      caseMaterial,
+      textureDetail: config.defaultTextureDetail,
+      wearLevel: config.defaultWearLevel,
+      engravingType: config.defaultEngraving,
+    });
+  },
+
+  setTextureDetail: (textureDetail: TextureDetailLevel) => {
+    set({ textureDetail });
+  },
+
+  setWearLevel: (wearLevel: WearLevel) => {
+    set({ wearLevel });
+  },
+
+  setEngravingType: (engravingType: EngravingType) => {
+    set({ engravingType });
+  },
+
+  setEngravingColor: (engravingColor: string) => {
+    set({ engravingColor });
+  },
+
+  resetMaterialCustoms: () => {
+    const state = get();
+    const config = MATERIAL_CONFIGS[state.caseMaterial];
+    set({
+      textureDetail: config.defaultTextureDetail,
+      wearLevel: config.defaultWearLevel,
+      engravingType: config.defaultEngraving,
+      engravingColor: DEFAULT_ENGRAVING_COLOR,
+    });
   },
 
   setSwitchType: (switchType: SwitchType) => {
@@ -682,3 +720,8 @@ export const useSwitchPhysics = (): SwitchPhysicsParams => {
 
 export const useUITheme = () => useKeyboardStore((state) => state.uiTheme);
 export const useSetUITheme = () => useKeyboardStore((state) => state.setUITheme);
+
+export const useTextureDetail = () => useKeyboardStore((state) => state.textureDetail);
+export const useWearLevel = () => useKeyboardStore((state) => state.wearLevel);
+export const useEngravingType = () => useKeyboardStore((state) => state.engravingType);
+export const useEngravingColor = () => useKeyboardStore((state) => state.engravingColor);

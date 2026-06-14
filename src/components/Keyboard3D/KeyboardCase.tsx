@@ -2,7 +2,7 @@ import { useRef, useMemo } from 'react';
 import { useFrame } from '@react-three/fiber';
 import { RoundedBox } from '@react-three/drei';
 import * as THREE from 'three';
-import { useCaseMaterial, useLayout } from '@/store/useKeyboardStore';
+import { useCaseMaterial, useLayout, useTextureDetail, useWearLevel, useEngravingType, useEngravingColor } from '@/store/useKeyboardStore';
 import { MATERIAL_CONFIGS } from '@/data/materials';
 import { LAYOUT_CONFIGS } from '@/data/layouts';
 import { getMaterialTexture } from '@/utils/materialTextures';
@@ -11,6 +11,10 @@ export function KeyboardCase() {
   const meshRef = useRef<THREE.Mesh>(null);
   const materialId = useCaseMaterial();
   const layout = useLayout();
+  const textureDetail = useTextureDetail();
+  const wearLevel = useWearLevel();
+  const engravingType = useEngravingType();
+  const engravingColor = useEngravingColor();
   const materialConfig = MATERIAL_CONFIGS[materialId];
   const layoutConfig = LAYOUT_CONFIGS[layout];
 
@@ -18,10 +22,16 @@ export function KeyboardCase() {
   const caseDepth = useMemo(() => layoutConfig.height + 0.8, [layoutConfig.height]);
 
   const texture = useMemo(() => {
-    const tex = getMaterialTexture(materialId);
+    const tex = getMaterialTexture({
+      material: materialId,
+      detail: textureDetail,
+      wear: wearLevel,
+      engraving: engravingType,
+      engravingColor,
+    });
     tex.needsUpdate = true;
     return tex;
-  }, [materialId]);
+  }, [materialId, textureDetail, wearLevel, engravingType, engravingColor]);
 
   useFrame((state) => {
     if (meshRef.current) {

@@ -14,6 +14,12 @@ export type KeyZone =
 
 export type CaseMaterial = 'aluminum' | 'plastic' | 'wood' | 'carbon';
 
+export type TextureDetailLevel = 'low' | 'medium' | 'high' | 'ultra';
+
+export type WearLevel = 'none' | 'light' | 'moderate' | 'heavy' | 'vintage';
+
+export type EngravingType = 'none' | 'logo' | 'geometric' | 'floral' | 'circuit' | 'dragon' | 'custom';
+
 export type SwitchType = 'red' | 'blue' | 'brown' | 'black' | 'silver' | 'green';
 
 export interface KeyConfig {
@@ -44,6 +50,9 @@ export interface MaterialConfig {
   color: string;
   roughness: number;
   metalness: number;
+  defaultTextureDetail: TextureDetailLevel;
+  defaultWearLevel: WearLevel;
+  defaultEngraving: EngravingType;
 }
 
 export interface ZoneConfig {
@@ -217,6 +226,10 @@ export interface ColorScheme {
 export interface KeyboardState {
   layout: LayoutType;
   caseMaterial: CaseMaterial;
+  textureDetail: TextureDetailLevel;
+  wearLevel: WearLevel;
+  engravingType: EngravingType;
+  engravingColor: string;
   switchType: SwitchType;
   soundEnabled: boolean;
   zoneColors: Record<KeyZone, string>;
@@ -253,6 +266,11 @@ export interface KeyboardState {
 export interface KeyboardActions {
   setLayout: (layout: LayoutType) => void;
   setCaseMaterial: (material: CaseMaterial) => void;
+  setTextureDetail: (level: TextureDetailLevel) => void;
+  setWearLevel: (level: WearLevel) => void;
+  setEngravingType: (type: EngravingType) => void;
+  setEngravingColor: (color: string) => void;
+  resetMaterialCustoms: () => void;
   setSwitchType: (switchType: SwitchType) => void;
   setSoundEnabled: (enabled: boolean) => void;
   setZoneColor: (zone: KeyZone, color: string) => void;

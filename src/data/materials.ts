@@ -1,4 +1,31 @@
-import { MaterialConfig, CaseMaterial } from '@/types/keyboard';
+import { MaterialConfig, CaseMaterial, TextureDetailLevel, WearLevel, EngravingType } from '@/types/keyboard';
+
+export const TEXTURE_DETAIL_OPTIONS: { id: TextureDetailLevel; name: string; description: string }[] = [
+  { id: 'low', name: '低', description: '基础纹理，性能最佳' },
+  { id: 'medium', name: '中', description: '平衡纹理质量与性能' },
+  { id: 'high', name: '高', description: '丰富纹理细节' },
+  { id: 'ultra', name: '超高', description: '极致细节，需要更强GPU' },
+];
+
+export const WEAR_LEVEL_OPTIONS: { id: WearLevel; name: string; description: string }[] = [
+  { id: 'none', name: '全新', description: '无磨损痕迹' },
+  { id: 'light', name: '轻微', description: '细微使用痕迹' },
+  { id: 'moderate', name: '中等', description: '明显使用磨损' },
+  { id: 'heavy', name: '严重', description: '重度磨损痕迹' },
+  { id: 'vintage', name: '复古', description: '经典复古质感' },
+];
+
+export const ENGRAVING_OPTIONS: { id: EngravingType; name: string; emoji: string }[] = [
+  { id: 'none', name: '无雕刻', emoji: '⬜' },
+  { id: 'logo', name: '品牌Logo', emoji: '🔷' },
+  { id: 'geometric', name: '几何图案', emoji: '🔶' },
+  { id: 'floral', name: '花卉纹样', emoji: '🌸' },
+  { id: 'circuit', name: '电路板', emoji: '⚡' },
+  { id: 'dragon', name: '龙纹雕刻', emoji: '🐉' },
+  { id: 'custom', name: '自定义', emoji: '✏️' },
+];
+
+export const DEFAULT_ENGRAVING_COLOR = '#00ffaa';
 
 export const MATERIAL_CONFIGS: Record<CaseMaterial, MaterialConfig> = {
   aluminum: {
@@ -7,6 +34,9 @@ export const MATERIAL_CONFIGS: Record<CaseMaterial, MaterialConfig> = {
     color: '#8a8f98',
     roughness: 0.18,
     metalness: 0.95,
+    defaultTextureDetail: 'high',
+    defaultWearLevel: 'none',
+    defaultEngraving: 'logo',
   },
   plastic: {
     id: 'plastic',
@@ -14,6 +44,9 @@ export const MATERIAL_CONFIGS: Record<CaseMaterial, MaterialConfig> = {
     color: '#2d3748',
     roughness: 0.45,
     metalness: 0.02,
+    defaultTextureDetail: 'medium',
+    defaultWearLevel: 'light',
+    defaultEngraving: 'none',
   },
   wood: {
     id: 'wood',
@@ -21,6 +54,9 @@ export const MATERIAL_CONFIGS: Record<CaseMaterial, MaterialConfig> = {
     color: '#7c4a1e',
     roughness: 0.72,
     metalness: 0.0,
+    defaultTextureDetail: 'ultra',
+    defaultWearLevel: 'moderate',
+    defaultEngraving: 'floral',
   },
   carbon: {
     id: 'carbon',
@@ -28,6 +64,9 @@ export const MATERIAL_CONFIGS: Record<CaseMaterial, MaterialConfig> = {
     color: '#1a1f2e',
     roughness: 0.28,
     metalness: 0.4,
+    defaultTextureDetail: 'high',
+    defaultWearLevel: 'none',
+    defaultEngraving: 'circuit',
   },
 };
 
